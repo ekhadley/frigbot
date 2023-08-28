@@ -6,7 +6,7 @@ purple = '\033[95m'
 blue = '\033[94m'
 cyan = '\033[96m'
 lime = '\033[92m'
-yellow = '\033[93m'
+lemon = '\033[93m'
 red = "\033[38;5;196m"
 pink = "\033[38;5;206m"
 orange = "\033[38;5;202m"
@@ -23,7 +23,6 @@ class Frig:
         self.keydir = keydir
         self.configDir = configDir
         self.token = open(f"{keydir}frigtoken.txt").readline().strip()
-        print(self.token)
         self.openaikey = open(f"{keydir}openai_key.txt").readline().strip()
         self.riotkey = open(f"{keydir}riotapi.txt").readline().strip()
         
@@ -47,7 +46,7 @@ class Frig:
         self.loop_delay = 0.05
 
     def gpt_resp(self, msg):
-        print(f"{bold}{gray}[GPT]: {endc}{yellow}text completion requested{endc}")
+        print(f"{bold}{gray}[GPT]: {endc}{lemon}text completion requested{endc}")
         try:
             completion = openai.ChatCompletion.create(model="gpt-4", messages=[{"role": "user", "content": msg["content"]}])
             resp = completion.choices[0].message.content
@@ -78,7 +77,7 @@ class Frig:
             try:
                 author = self.user_IDs[msg["author"]["global_name"]]
             except KeyError:
-                print(f"{bold}{gray}[FRIG]: {endc}{yellow}new username '{msg['author']['global_name']}' detected. storing their ID. {endc}")
+                print(f"{bold}{gray}[FRIG]: {endc}{lemon}new username '{msg['author']['global_name']}' detected. storing their ID. {endc}")
                 self.user_IDs[msg["author"]["global_name"]] = msg["author"]["id"]
                 with open(f"{self.configDir}userIDs.json", "w") as f:
                     f.write(json.dumps(self.user_IDs, indent=4))
@@ -92,7 +91,7 @@ class Frig:
         if body.startswith("!"):
             try:
                 command = body.split(" ")[0]
-                print(f"{bold}{gray}[FRIG]: {endc}{yellow} command found: {command}{endc}")
+                print(f"{bold}{gray}[FRIG]: {endc}{lemon} command found: {command}{endc}")
                 return self.commands[command](msg)
             except KeyError as e:
                 print(f"{bold}{gray}[FRIG]: {endc}{red} detected command '{command}' but type was unrecognized{endc}")
@@ -123,12 +122,12 @@ class lolManager:
         try:
             return self.summonerIDs[str(summonerName)]
         except KeyError:
-            print(f"{gray}{bold}[LOL]:{endc} {yellow}requested summonerID for new name:' {summonerName}'{endc}")
+            print(f"{gray}{bold}[LOL]:{endc} {lemon}requested summonerID for new name:' {summonerName}'{endc}")
             url = f"https://{region}.api.riotgames.com/lol/summoner/v4/summoners/by-name/{summonerName}?api_key={self.riotkey}"
             get = requests.get(url)
             if get.status_code == 200:
                 self.summonerIDs[str(summonerName)] = get.json()["id"]
-                print(f"{gray}{bold}[LOL]:{endc} {yellow}stored new summonerID for '{summonerName}'{endc}")
+                print(f"{gray}{bold}[LOL]:{endc} {lemon}stored new summonerID for '{summonerName}'{endc}")
                 self.store_player_ids()
                 return self.summonerIDs[str(summonerName)]
             else:
@@ -152,7 +151,7 @@ class lolManager:
     
     def parse_ranked_info(self, info, name):
         if info == []:
-            if name.lower() == "dragondude": "@ASlowFatHorsey play ranked bitch"
+            if name.lower() == "dragondude": return "ap is still a bitch (not on the ranked grind)"
             return f"{name} is not on the ranked grind"
         try:
             summinfo = info[0]
