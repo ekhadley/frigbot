@@ -22,9 +22,10 @@ class Frig:
         self.chatid = chatid
         self.keydir = keydir
         self.configDir = configDir
-        self.token = open(f"{keydir}frigtoken.txt").readline()
-        self.openaikey = open(f"{keydir}openai_key.txt").readline()
-        self.riotkey = open(f"{keydir}riotapi.txt").readline()
+        self.token = open(f"{keydir}frigtoken.txt").readline().strip()
+        print(self.token)
+        self.openaikey = open(f"{keydir}openai_key.txt").readline().strip()
+        self.riotkey = open(f"{keydir}riotapi.txt").readline().strip()
         
         self.lol = lolManager(self.riotkey, self.configDir)
         openai.api_key = self.openaikey
