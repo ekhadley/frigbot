@@ -18,11 +18,12 @@ underline = '\033[4m'
 endc = '\033[0m'
 
 class Frig:
-    def __init__(self, chatid=551246526924455937):
+    def __init__(self, keydir, chatid=551246526924455937):
         self.chatid = chatid
-        self.token = open("D:\\frig\\frigtoken.txt").readline()
-        self.openaikey = open("D:\\frig\\openai_key.txt").readline()
-        self.riotkey = open("D:\\frig\\riotapi.txt").readline()
+        self.keydir = keydir
+        self.token = open(f"{keydir}\\frigtoken.txt").readline()
+        self.openaikey = open(f"{keydir}\\openai_key.txt").readline()
+        self.riotkey = open(f"{keydir}\\riotapi.txt").readline()
         
         self.configDir = "D:\\wgmn\\frigbot\\config"
         self.lol = lolManager(self.riotkey, self.configDir)
