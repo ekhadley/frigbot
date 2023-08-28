@@ -19,7 +19,6 @@ if __name__ == '__main__':
         run(frig)
 
     if platform.system() == "Linux":
-        import daemon
         keydir = "/home/ek/Desktop/frigkeys/"
         configDir = "/home/ek/Desktop/wgmn/frigbot/config/"
         frig = Frig(keydir=keydir, configDir=configDir, chatid=chatid) # eekay
