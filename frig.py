@@ -32,7 +32,6 @@ class Frig:
 
         self.user_IDs = self.load_user_ids()
 
-
         self.commands = {"!help":self.help_resp,
                          "!commands":self.help_resp,
                          "!cmds":self.help_resp,
