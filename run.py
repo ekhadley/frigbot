@@ -15,4 +15,3 @@ if __name__ == '__main__':
             resp = frig.parse_last_msg()
             frig.send(resp)
             time.sleep(frig.loop_delay)
-    
