@@ -79,7 +79,7 @@ class Frig:
             except KeyError:
                 print(f"{bold}{gray}[FRIG]: {endc}{yellow}new username '{msg['author']['global_name']}' detected. storing their ID. {endc}")
                 self.user_IDs[msg["author"]["global_name"]] = msg["author"]["id"]
-                with open(f"{self.configDir}\\userIDs.json", "w") as f:
+                with open(f"{self.configDir}userIDs.json", "w") as f:
                     f.write(json.dumps(self.user_IDs, indent=4))
             
             self.last_msg_id = msg["id"]
@@ -104,7 +104,7 @@ class Frig:
         return ""
 
     def load_user_ids(self):
-        with open(f"{self.configDir}\\userIDs.json", 'r') as f:
+        with open(f"{self.configDir}userIDs.json", 'r') as f:
             return json.load(f)
 
 
@@ -115,7 +115,7 @@ class lolManager:
         self.summonerIDs = self.load_player_ids()
 
     def load_player_ids(self):
-        with open(f"{self.saveDir}\\summonerIDs.json", 'r') as f:
+        with open(f"{self.saveDir}summonerIDs.json", 'r') as f:
             return json.load(f)
     
     def get_summoner_id(self, summonerName, region=None):
@@ -134,7 +134,7 @@ class lolManager:
                 print(f"{gray}{bold}[LOL]:{endc} {red}new summonerID for '{summonerName}' could not be located{endc}")
                 return None
     def store_player_ids(self):
-        with open(f"{self.saveDir}\\summonerIDs.json", "w") as f:
+        with open(f"{self.saveDir}summonerIDs.json", "w") as f:
             f.write(json.dumps(self.summonerIDs, indent=4))
 
     def ranked_info(self, summonerName, region=None):
