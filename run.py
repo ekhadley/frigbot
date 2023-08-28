@@ -5,21 +5,23 @@ from frig import *
 def run(frig):
     print(bold, cyan, "\nFrigBot started", endc)
     while 1:
-        resp = bot.parse_last_msg()
-        bot.send(resp)
-        time.sleep(bot.loop_delay)
+        resp = frig.parse_last_msg()
+        frig.send(resp)
+        time.sleep(frig.loop_delay)
 
 if __name__ == '__main__':
     #chatid = 551246526924455937 # kissy
     chatid = 972938534661009519 # eekay
     if platform.system() == "Windows":
-        keydir = "D:\\frig"
-        frig = Frig(keydir, chatid=chatid) # eekay
+        keydir = "D:\\frig\\"
+        configDir = "D:\\wgmn\\frigbot\\config\\"
+        frig = Frig(keydir, configDir, chatid=chatid) # eekay
         run(frig)
 
     if platform.system() == "Linux":
         import daemon
         keydir = "home/ek/Desktop/frigkeys/"
-        frig = Frig(keydir, chatid=chatid) # eekay
+        configDir = "home/ek/Desktop/wgmn/frigbot/config/"
+        frig = Frig(keydir, configDir, chatid=chatid) # eekay
         with daemon.DaemonContext():
             run(frig)
