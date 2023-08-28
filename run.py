@@ -23,5 +23,4 @@ if __name__ == '__main__':
         keydir = "/home/ek/Desktop/frigkeys/"
         configDir = "/home/ek/Desktop/wgmn/frigbot/config/"
         frig = Frig(keydir=keydir, configDir=configDir, chatid=chatid) # eekay
-        with daemon.DaemonContext():
-            run(frig)
+        run(frig)
