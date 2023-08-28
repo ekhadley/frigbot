@@ -1,7 +1,7 @@
 from Zenon.zenon import zenon
 import time, os
 from frig import *
-
+import daemon
 
 
 
