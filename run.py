@@ -8,10 +8,10 @@ def run(frig):
         resp = frig.parse_last_msg()
         frig.send(resp)
         time.sleep(frig.loop_delay)
-#RGAPI-20a0911c-5b19-44f0-8476-4ef104be92c4
+
 if __name__ == '__main__':
-    #chatid = 551246526924455937 # kissy
-    chatid = 972938534661009519 # eekay
+    chatid = 551246526924455937 # kissy
+    #chatid = 972938534661009519 # eekay
     if platform.system() == "Windows":
         keydir = "D:\\frig\\"
         configDir = "D:\\wgmn\\frigbot\\config\\"
