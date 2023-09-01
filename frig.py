@@ -42,7 +42,7 @@ class Frig:
         self.echoes = {"nefarious":"This computer is shared with others including parents. This is a parent speaking to you to now. Not sure what this group is up to. I have told my son that role playing d and d games are absolutely forbidden in out household. We do not mind him having online friendships with local people that he knows for legitimate purposes. Perhaps this is an innocent group. But, we expect transparency in our son's friendships and acquaintances. If you would like to identify yourself now and let me know what your purpose for this platform is this is fine. You are welcome to do so."}
 
         self.last_msg_id = 0
-        self.loop_delay = 0.05
+        self.loop_delay = 0.1
 
     def gpt_resp(self, msg):
         print(f"{bold}{gray}[GPT]: {endc}{lemon}text completion requested{endc}")
@@ -67,8 +67,14 @@ class Frig:
     def send(self, msg):
         if msg != "": self.client.send_message(self.chatid, msg)
     def get_last_msg(self) -> str:
-        msg = self.client.get_message(self.chatid)
-        return msg
+        try:
+            msg = self.client.get_message(self.chatid)
+            return msg
+        except Exception as e:
+            print(f"{bold}{gray}[FRIG]: {endc}{red}message read failed with exception:\n{e}{endc}")
+            return None
+
+
     
     def parse_last_msg(self):
         msg = self.get_last_msg()
