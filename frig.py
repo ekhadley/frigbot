@@ -70,19 +70,17 @@ class Frig:
         summ = msg["content"].replace("!lp", "").strip()
         return self.lol.ranked_info(summ)
 
-    def send(self, msg):
+    def send(self, msg): # sends a string as a message in the chat
         if msg != "": self.client.send_message(self.chatid, msg)
-    def get_last_msg(self) -> str:
+    def get_last_msg(self) -> str: # reads the most recent message in the chat, returns a json
         try:
             msg = self.client.get_message(self.chatid)
             return msg
         except Exception as e:
             print(f"{bold}{gray}[FRIG]: {endc}{red}message read failed with exception:\n{e}{endc}")
             return None
-
-
     
-    def parse_last_msg(self):
+    def parse_last_msg(self): # reads most recent msg, determines if it has been seen, and what command to respond with, if any
         msg = self.get_last_msg()
         if msg["id"] != self.last_msg_id and msg["author"]["id"] != self.user_IDs["FriggBot2000"]:
             try:
@@ -97,7 +95,7 @@ class Frig:
             return self.parse(msg)
         return ""
 
-    def parse(self, msg):
+    def parse(self, msg): # determines what command to respond with for a given message
         body = msg["content"].lstrip()
         if body.startswith("!"):
             try:
@@ -119,7 +117,7 @@ class Frig:
             return json.load(f)
 
 
-class lolManager:
+class lolManager: # this handles requests to the riot api
     def __init__(self, riotkey, saveDir):
         self.saveDir = saveDir
         self.riotkey = riotkey
@@ -155,9 +153,11 @@ class lolManager:
         get = requests.get(url)
         if get.status_code == 200:
             report = self.parse_ranked_info(get.json(), summonerName)
-            print(f"{gray}{bold}[LOL]:{endc} {green}ranked info acquired for '{summonerName}'{endc}")
+            print(f"{gray}{bold}[LOL]: {endc}{green}ranked info acquired for '{summonerName}'{endc}")
             return report
-        print(f"{gray}{bold}[LOL]: {endc}{red}get request got: {get} for name '{summonerName}'{endc}")
+        elif get.status_code == 403:
+            print(f"{gray}{bold}[LOL]: {endc}{red}got: 403 for name '{summonerName}'. key is probably expired.{endc}")
+        else: print(f"{gray}{bold}[LOL]: {endc}{red}get request got: {get} for name '{summonerName}'{endc}")
         return "https://tenor.com/view/snoop-dog-who-what-gif-14541222"
     
     def parse_ranked_info(self, info, name):
