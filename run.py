@@ -11,8 +11,8 @@ def run(frig):
 
 if __name__ == '__main__':
     system = platform.system()
-    #chatid = 551246526924455937 # kissy
-    chatid = 972938534661009519 # eekay
+    chatid = 551246526924455937 # kissy
+    #chatid = 972938534661009519 # eekay
     if system == "Windows":
         keydir = "D:\\frig\\"
         configDir = "D:\\wgmn\\frigbot\\config\\"
