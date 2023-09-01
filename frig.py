@@ -45,7 +45,7 @@ class Frig:
         self.last_msg_id = 0
         self.loop_delay = 0.1
 
-    def arcane_resp(self):
+    def arcane_resp(self, msg):
         delta = datetime.datetime(2024,11,20, 21, 5, 0) - datetime.datetime.now()
         days, hours, minutes, seconds = delta.days, delta.seconds//3600, (delta.seconds%3600)//60, delta.seconds%60
         return f"arcane comes out in approximately {days} days, {hours} hours, {minutes} minutes, and {seconds} seconds. hang in there."
