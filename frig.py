@@ -1,4 +1,4 @@
-import random, math, json, requests, time, os, numpy as np
+import datetime, random, math, json, requests, time, os, numpy as np
 from Zenon.zenon import zenon
 import openai
 
@@ -37,12 +37,18 @@ class Frig:
                          "!cmds":self.help_resp,
                          "!gpt4":self.gpt_resp,
                          "!gpt":self.gpt_resp,
+                         "!arcane":self.arcane_resp,
                          "!lp":self.lp_resp}
 
         self.echoes = {"nefarious":"This computer is shared with others including parents. This is a parent speaking to you to now. Not sure what this group is up to. I have told my son that role playing d and d games are absolutely forbidden in out household. We do not mind him having online friendships with local people that he knows for legitimate purposes. Perhaps this is an innocent group. But, we expect transparency in our son's friendships and acquaintances. If you would like to identify yourself now and let me know what your purpose for this platform is this is fine. You are welcome to do so."}
 
         self.last_msg_id = 0
         self.loop_delay = 0.1
+
+    def arcane_resp(self):
+        delta = datetime.datetime(2024,11,20, 21, 5, 0) - datetime.datetime.now()
+        days, hours, minutes, seconds = delta.days, delta.seconds//3600, (delta.seconds%3600)//60, delta.seconds%60
+        return f"arcane comes out in approximately {days} days, {hours} hours, {minutes} minutes, and {seconds} seconds. hang in there."
 
     def gpt_resp(self, msg):
         print(f"{bold}{gray}[GPT]: {endc}{lemon}text completion requested{endc}")
