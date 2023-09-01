@@ -156,9 +156,11 @@ class lolManager: # this handles requests to the riot api
             print(f"{gray}{bold}[LOL]: {endc}{green}ranked info acquired for '{summonerName}'{endc}")
             return report
         elif get.status_code == 403:
-            print(f"{gray}{bold}[LOL]: {endc}{red}got: 403 for name '{summonerName}'. key is probably expired.{endc}")
-        else: print(f"{gray}{bold}[LOL]: {endc}{red}get request got: {get} for name '{summonerName}'{endc}")
-        return "https://tenor.com/view/snoop-dog-who-what-gif-14541222"
+            print(f"{gray}{bold}[LOL]: {endc}{red}got 403 for name '{summonerName}'. key is probably expired.{endc}")
+            return f"got 403 for name '{summonerName}'. key is probably expired. blame riot"
+        else:
+            print(f"{gray}{bold}[LOL]: {endc}{red}get request got: {get} for name '{summonerName}'{endc}")
+            return "https://tenor.com/view/snoop-dog-who-what-gif-14541222"
     
     def parse_ranked_info(self, info, name):
         if info == []:
