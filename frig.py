@@ -38,9 +38,12 @@ class Frig:
                          "!gpt4":self.gpt_resp,
                          "!gpt":self.gpt_resp,
                          "!arcane":self.arcane_resp,
+                         "!faptime":self.faptime_resp,
+                         "!fapfail":self.fapfail_resp,
                          "!lp":self.lp_resp}
 
         self.echoes = {"nefarious":"This computer is shared with others including parents. This is a parent speaking to you to now. Not sure what this group is up to. I have told my son that role playing d and d games are absolutely forbidden in out household. We do not mind him having online friendships with local people that he knows for legitimate purposes. Perhaps this is an innocent group. But, we expect transparency in our son's friendships and acquaintances. If you would like to identify yourself now and let me know what your purpose for this platform is this is fine. You are welcome to do so."}
+
 
         self.last_msg_id = 0
         self.loop_delay = 0.1
@@ -49,6 +52,16 @@ class Frig:
         delta = datetime.datetime(2024,12,25, 21, 5, 0) - datetime.datetime.now()
         days, hours, minutes, seconds = delta.days, delta.seconds//3600, (delta.seconds%3600)//60, delta.seconds%60
         return f"arcane comes out in approximately {days} days, {hours} hours, {minutes} minutes, and {seconds} seconds. hang in there."
+    
+    def faptime_resp(self, msg):
+        authorid = msg["author"]["id"]
+        return f"unimplemented!"
+    
+    def fapfail_resp(self, msg):
+        authorid = msg["author"]["id"]
+        if int(authorid) != int(self.user_IDs["Xylotile"]): return f"You are not authorized to make Xylotile fap!"
+        else: return f""
+
 
     def gpt_resp(self, msg):
         print(f"{bold}{gray}[GPT]: {endc}{lemon}text completion requested{endc}")
@@ -136,11 +149,11 @@ class lolManager: # this handles requests to the riot api
             get = requests.get(url)
             if get.status_code == 200:
                 self.summonerIDs[str(summonerName)] = get.json()["id"]
-                print(f"{gray}{bold}[LOL]:{endc} {lemon}stored new summonerID for '{summonerName}'{endc}")
+                print(f"{gray}{bold}[LOL]:{endc} {lemon}stored summonerID for new username: '{summonerName}'{endc}")
                 self.store_player_ids()
                 return self.summonerIDs[str(summonerName)]
             else:
-                print(f"{gray}{bold}[LOL]:{endc} {red}new summonerID for '{summonerName}' could not be located{endc}")
+                print(f"{gray}{bold}[LOL]:{endc} {red}summonerID for new username: '{summonerName}' could not be located{endc}")
                 return None
     def store_player_ids(self):
         with open(f"{self.saveDir}summonerIDs.json", "w") as f:
@@ -156,32 +169,30 @@ class lolManager: # this handles requests to the riot api
             print(f"{gray}{bold}[LOL]: {endc}{green}ranked info acquired for '{summonerName}'{endc}")
             return report
         elif get.status_code == 403:
-            print(f"{gray}{bold}[LOL]: {endc}{red}got 403 for name '{summonerName}'. key is probably expired.{endc}")
+            print(f"{gray}{bold}[LOL]: {endc}{red}got 403 for name '{summonerName}'. key is probably expired. request url:\n{url}{endc}")
             return f"got 403 for name '{summonerName}'. key is probably expired. blame riot"
         else:
-            print(f"{gray}{bold}[LOL]: {endc}{red}get request got: {get} for name '{summonerName}'{endc}")
+            print(f"{gray}{bold}[LOL]: {endc}{red}attempted ID for '{summonerName}' got: {get}. request url:\n{url}'{endc}")
             return "https://tenor.com/view/snoop-dog-who-what-gif-14541222"
     
     def parse_ranked_info(self, info, name):
+        print(bold, info)
+        print(len(info), endc)
+
         if info == []:
-            if name.lower() == "dragondude": return "ap is still a bitch (not on the ranked grind)"
+            if "dragondude" in name.lower(): return "ap is still a bitch (not on the ranked grind)"
             return f"{name} is not on the ranked grind"
         try:
-            summinfo = info[0]
-            name = summinfo["summonerName"]
-            lp = summinfo["leaguePoints"]
-            wins = int(summinfo["wins"])
-            losses = int(summinfo["losses"])
+            info = info[0]
+            name = info["summonerName"]
+            lp = info["leaguePoints"]
+            wins = int(info["wins"])
+            losses = int(info["losses"])
             winrate = wins/(wins+losses)
-            if len(info) > 1:
-                rankedinfo = info[1]
-                tier = rankedinfo["tier"].lower().capitalize()
-                div = rankedinfo["rank"]
-                rankrep = f"in {tier} {div} at {lp} lp"
-            else:
-                div = "unranked"
-                tier = "unranked"
-                rankrep = f"unranked at {lp} lp"
+
+            tier = info["tier"].lower().capitalize()
+            div = info["rank"]
+            rankrep = f"in {tier} {div} at {lp} lp"
 
             rep = f"{name} is {rankrep} with a {winrate:.3f} wr over {wins+losses} games"
             return rep
