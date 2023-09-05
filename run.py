@@ -30,5 +30,5 @@ if __name__ == '__main__':
         except Exception as e:
             i += 1
             print(f"{bold}crashed with exception:\n{e}\n This is the {i}'th/4 consecutive crash.{endc}")
-    assert 0, f"reached maximum consecutive crashes. aborting bot."
     Frig.send(f"frigbot has crashed. F for frigbot. spam @.eekay")
+    assert 0, f"reached maximum consecutive crashes. aborting bot."
