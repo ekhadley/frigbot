@@ -176,9 +176,6 @@ class lolManager: # this handles requests to the riot api
             return "https://tenor.com/view/snoop-dog-who-what-gif-14541222"
     
     def parse_ranked_info(self, info, name):
-        print(bold, info)
-        print(len(info), endc)
-
         if info == []:
             if "dragondude" in name.lower(): return "ap is still a bitch (not on the ranked grind)"
             return f"{name} is not on the ranked grind"
