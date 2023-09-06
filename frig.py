@@ -1,21 +1,7 @@
 import datetime, random, math, json, requests, time, os, numpy as np
 from Zenon.zenon import zenon
 import openai
-
-purple = '\033[95m'
-blue = '\033[94m'
-cyan = '\033[96m'
-lime = '\033[92m'
-lemon = '\033[93m'
-red = "\033[38;5;196m"
-pink = "\033[38;5;206m"
-orange = "\033[38;5;202m"
-green = "\033[38;5;34m"
-gray = "\033[38;5;8m"
-
-bold = '\033[1m'
-underline = '\033[4m'
-endc = '\033[0m'
+from utils import *
 
 class Frig:
     def __init__(self, keydir, configDir, chatid=551246526924455937):
@@ -25,6 +11,7 @@ class Frig:
         self.token = open(f"{keydir}frigtoken.txt").readline().strip()
         self.openaikey = open(f"{keydir}openai_key.txt").readline().strip()
         self.riotkey = open(f"{keydir}riotapi.txt").readline().strip()
+        self.lastfap =  self.load_lastfap()
         
         self.lol = lolManager(self.riotkey, self.configDir)
         openai.api_key = self.openaikey
@@ -39,7 +26,9 @@ class Frig:
                          "!gpt":self.gpt_resp,
                          "!arcane":self.arcane_resp,
                          "!faptime":self.faptime_resp,
+                         "!lastfap":self.lastfap_resp,
                          "!fapfail":self.fapfail_resp,
+                         "!lostfap":self.fapfail_resp,
                          "!lp":self.lp_resp}
 
         self.echoes = {"nefarious":"This computer is shared with others including parents. This is a parent speaking to you to now. Not sure what this group is up to. I have told my son that role playing d and d games are absolutely forbidden in out household. We do not mind him having online friendships with local people that he knows for legitimate purposes. Perhaps this is an innocent group. But, we expect transparency in our son's friendships and acquaintances. If you would like to identify yourself now and let me know what your purpose for this platform is this is fine. You are welcome to do so."}
@@ -53,15 +42,6 @@ class Frig:
         days, hours, minutes, seconds = delta.days, delta.seconds//3600, (delta.seconds%3600)//60, delta.seconds%60
         return f"arcane comes out in approximately {days} days, {hours} hours, {minutes} minutes, and {seconds} seconds. hang in there."
     
-    def faptime_resp(self, msg):
-        authorid = msg["author"]["id"]
-        return f"unimplemented!"
-    
-    def fapfail_resp(self, msg):
-        authorid = msg["author"]["id"]
-        if int(authorid) != int(self.user_IDs["Xylotile"]): return f"You are not authorized to make Xylotile fap!"
-        else: return f""
-
 
     def gpt_resp(self, msg):
         print(f"{bold}{gray}[GPT]: {endc}{lemon}text completion requested{endc}")
@@ -83,8 +63,12 @@ class Frig:
         summ = msg["content"].replace("!lp", "").strip()
         return self.lol.ranked_info(summ)
 
-    def send(self, msg): # sends a string as a message in the chat
-        if msg != "": self.client.send_message(self.chatid, msg)
+    def send(self, msg): # sends a string or lsit of strings as a message/messages in the chat
+        if isinstance(msg, list):
+            for m in msg: self.send(m)
+        elif isinstance(msg, str) and msg != "":
+            self.client.send_message(self.chatid, msg)
+
     def get_last_msg(self) -> str: # reads the most recent message in the chat, returns a json
         try:
             msg = self.client.get_message(self.chatid)
@@ -129,6 +113,35 @@ class Frig:
         with open(f"{self.configDir}userIDs.json", 'r') as f:
             return json.load(f)
 
+    def load_lastfap(self):
+        try:
+            return dateload(f"{self.configDir}lastfap.txt")
+        except Exception as e:
+            print(e)
+            return None
+
+    def faptime(self):
+        delta = datetime.datetime.now() - self.lastfap
+        days, hours, minutes, seconds = delta.days, delta.seconds//3600, (delta.seconds%3600)//60, delta.seconds%60
+        return days, hours, minutes, seconds
+    def faptime_resp(self, msg):
+        days, hours, minutes, seconds = self.faptime()
+        return f"Xylotile has not nutted in {days} days, {hours} hours, {minutes} minutes, and {seconds} seconds. stay strong."
+    def lastfap_resp(self, msg):
+        return f"Xylotile's last nut was on {self.lastfap.strftime('%B %d %Y at %I:%M%p')}"
+    def fapfail_resp(self, msg):
+        authorid = msg["author"]["id"]
+        try:
+            if int(authorid) != int(self.user_IDs["Xylotile"]): return f"You are not authorized to make Xylotile nut."
+            else:
+                days, hours, minutes, seconds = self.faptime()
+                self.set_last_fap()
+                return ["https://tenor.com/view/ambatukam-ambasing-ambadeblow-gif-25400729", f"Xylotile has just lost their nofap streak of {days} days, {hours} hours, {minutes} minutes, and {seconds} seconds."]
+        except KeyError:
+            print(bold, red, f"Xylotile's userID could not be found, so the fapstreak update could not be verified. thats not good! spam @eekay")
+    def set_last_fap(self):
+        satesave(datetime.datetime.now(), f"{self.configDir}lastfap.txt")
+        self.lastfap = self.load_lastfap()
 
 class lolManager: # this handles requests to the riot api
     def __init__(self, riotkey, saveDir):
