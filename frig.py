@@ -140,7 +140,7 @@ class Frig:
         except KeyError:
             print(bold, red, f"Xylotile's userID could not be found, so the fapstreak update could not be verified. thats not good! spam @eekay")
     def set_last_fap(self):
-        satesave(datetime.datetime.now(), f"{self.configDir}lastfap.txt")
+        datesave(datetime.datetime.now(), f"{self.configDir}lastfap.txt")
         self.lastfap = self.load_lastfap()
 
 class lolManager: # this handles requests to the riot api
