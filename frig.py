@@ -31,7 +31,19 @@ class Frig:
                          "!lostfap":self.fapfail_resp,
                          "!lp":self.lp_resp}
 
-        self.echoes = {"nefarious":"This computer is shared with others including parents. This is a parent speaking to you to now. Not sure what this group is up to. I have told my son that role playing d and d games are absolutely forbidden in out household. We do not mind him having online friendships with local people that he knows for legitimate purposes. Perhaps this is an innocent group. But, we expect transparency in our son's friendships and acquaintances. If you would like to identify yourself now and let me know what your purpose for this platform is this is fine. You are welcome to do so."}
+        self.echo_resps = [
+                "This computer is shared with others including parents. This is a parent speaking to you to now. Not sure what this group is up to. I have told my son that role playing d and d games are absolutely forbidden in out household. We do not mind him having online friendships with local people that he knows for legitimate purposes. Perhaps this is an innocent group. But, we expect transparency in our son's friendships and acquaintances. If you would like to identify yourself now and let me know what your purpose for this platform is this is fine. You are welcome to do so.",
+                           
+                ["Do not go gentle into that good juckyard.", "Tetus should burn and rave at close of day.", "Rage, rage against the dying of the gamings.", "Though wise men at their end know gaming is right,", "Becuase their plays had got no karma they", "Do not go gentle into that good juckyard"]
+                           ]
+
+        self.echoes = {"nefarious":self.echo_resps[0],
+                       "avatars":self.echo_resps[0],
+                       "poem":self.echo_resps[1],
+                       "poetry":self.echo_resps[1],
+                       "tetus":self.echo_resps[1],
+                       "juckyard":self.echo_resps[1]
+                       }
 
 
         self.last_msg_id = 0
