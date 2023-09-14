@@ -47,7 +47,7 @@ class Frig:
 
 
         self.last_msg_id = 0
-        self.loop_delay = 0.1
+        self.loop_delay = 0.3
 
     def arcane_resp(self, msg):
         delta = datetime.datetime(2024,12,25, 21, 5, 0) - datetime.datetime.now()
