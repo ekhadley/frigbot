@@ -23,7 +23,7 @@ if __name__ == '__main__':
     
     Frig = Frig(keydir=keydir, configDir=configDir, chatid=chatid) # eekay
     i = 0
-    while i < 5:
+    while i < 100:
         try:
             run(Frig)
             i = 0
