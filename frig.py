@@ -19,7 +19,9 @@ class Frig:
 
         self.user_IDs = self.load_user_ids()
 
-        self.commands = {"!help":self.help_resp,
+        self.botname = self.user_IDs["FriggBot2000"]
+
+        self.commands = {"!help":self.help_resp, # a dict of associations between commands (prefaced with a '!') and the functions they call to generate responses.
                          "!commands":self.help_resp,
                          "!cmds":self.help_resp,
                          "!gpt4":self.gpt_resp,
@@ -31,13 +33,13 @@ class Frig:
                          "!lostfap":self.fapfail_resp,
                          "!lp":self.lp_resp}
 
-        self.echo_resps = [
+        self.echo_resps = [ # the static repsonse messages for trigger words which I term "echo" responses
                 "This computer is shared with others including parents. This is a parent speaking to you to now. Not sure what this group is up to. I have told my son that role playing d and d games are absolutely forbidden in out household. We do not mind him having online friendships with local people that he knows for legitimate purposes. Perhaps this is an innocent group. But, we expect transparency in our son's friendships and acquaintances. If you would like to identify yourself now and let me know what your purpose for this platform is this is fine. You are welcome to do so.",
                            
                 ["Do not go gentle into that good juckyard.", "Tetus should burn and rave at close of day.", "Rage, rage against the dying of the gamings.", "Though wise men at their end know gaming is right,", "Becuase their plays had got no karma they", "Do not go gentle into that good juckyard"]
                            ]
 
-        self.echoes = {"nefarious":self.echo_resps[0],
+        self.echoes = {"nefarious":self.echo_resps[0], # these are the trigger words and their associated echo
                        "avatars":self.echo_resps[0],
                        "poem":self.echo_resps[1],
                        "poetry":self.echo_resps[1],
@@ -46,14 +48,13 @@ class Frig:
                        }
 
 
-        self.last_msg_id = 0
-        self.loop_delay = 0.3
+        self.last_msg_id = 0 # unique message id. Used to check if a new message has appeared
+        self.loop_delay = 0.3 # delay in seconds between checking for new mesages
 
     def arcane_resp(self, msg):
         delta = datetime.datetime(2024,12,25, 21, 5, 0) - datetime.datetime.now()
         days, hours, minutes, seconds = delta.days, delta.seconds//3600, (delta.seconds%3600)//60, delta.seconds%60
         return f"arcane s2 comes out in approximately {days} days, {hours} hours, {minutes} minutes, and {seconds} seconds. hang in there."
-    
 
     def gpt_resp(self, msg):
         print(f"{bold}{gray}[GPT]: {endc}{lemon}text completion requested{endc}")
@@ -75,7 +76,7 @@ class Frig:
         summ = msg["content"].replace("!lp", "").strip()
         return self.lol.ranked_info(summ)
 
-    def send(self, msg): # sends a string or lsit of strings as a message/messages in the chat
+    def send(self, msg): # sends a string or list of strings as a message/messages in the chat
         if isinstance(msg, list):
             for m in msg: self.send(m)
         elif isinstance(msg, str) and msg != "":
@@ -89,9 +90,9 @@ class Frig:
             print(f"{bold}{gray}[FRIG]: {endc}{red}message read failed with exception:\n{e}{endc}")
             return None
     
-    def parse_last_msg(self): # reads most recent msg, determines if it has been seen, and what command to respond with, if any
+    def parse_last_msg(self): # reads most recent msg, determines if it has been previously seen, and what command to respond with, if any
         msg = self.get_last_msg()
-        if msg["id"] != self.last_msg_id and msg["author"]["id"] != self.user_IDs["FriggBot2000"]:
+        if msg["id"] != self.last_msg_id and msg["author"]["id"] != self.botname:
             try:
                 author = self.user_IDs[msg["author"]["global_name"]]
             except KeyError:
@@ -101,10 +102,10 @@ class Frig:
                     f.write(json.dumps(self.user_IDs, indent=4))
             
             self.last_msg_id = msg["id"]
-            return self.parse(msg)
+            return self.get_response(msg)
         return ""
 
-    def parse(self, msg): # determines what command to respond with for a given message
+    def get_response(self, msg): # determines how to respond to a newly detected message. 
         body = msg["content"].lstrip()
         if body.startswith("!"):
             try:
