@@ -88,8 +88,9 @@ class Frig:
         opts = ["rock", "paper", "scissors"]
         if rollname not in opts: return f"{rollname} is not an option. please choose one of {opts}"
         
-        botroll = random.randint(0, 2)
         roll = opts.index(rollname)
+        if authorid == self.user_IDs["Xylotile"]: botroll = random.choice([(roll+1])%3]*6 + [(roll+2])%3, roll])
+        else: botroll = random.randint(0, 2)
         if roll == botroll: report = f"We both chose {opts[botroll]}"; self.rps_scores[authorid+"d"] += 1
         if (roll+2)%3 == botroll: report = f"I chose {opts[botroll]}. W"; self.rps_scores[authorid+"w"] += 1
         if (roll+1)%3 == botroll: report = f"I chose {opts[botroll]}. shitter"; self.rps_scores[authorid+"l"] += 1
