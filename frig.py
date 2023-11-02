@@ -76,15 +76,14 @@ class Frig:
         return resp
 
     def rps_resp(self, msg):
-        print(self.rps_scores)
         rollname = msg["content"].replace("!rps", "").strip()
         authorid = msg["author"]["id"]
-        if rollname == "": return f"Your score is {self.rps_scores[authorid+'w']}/{self.rps_scores[authorid+'d']}/{self.rps_scores[authorid+'l']}"
         if authorid+"w" not in self.rps_scores:
             print(f"{bold}{gray}[RPS]: {endc}{yellow}new RPS player found {endc}")
             self.rps_scores[authorid+"d"] = 0
             self.rps_scores[authorid+"w"] = 0
             self.rps_scores[authorid+"l"] = 0
+        if rollname == "": return f"Your score is {self.rps_scores[authorid+'w']}/{self.rps_scores[authorid+'d']}/{self.rps_scores[authorid+'l']}"
 
         opts = ["rock", "paper", "scissors"]
         if rollname not in opts: return f"{rollname} is not an option. please choose one of {opts}"
