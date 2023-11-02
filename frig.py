@@ -5,21 +5,16 @@ from utils import *
 
 class Frig:
     def __init__(self, keydir, configDir, chatid=551246526924455937):
+        self.last_msg_id = 0 # unique message id. Used to check if a new message has appeared
+        self.loop_delay = 0.3 # delay in seconds between checking for new mesages
+        
         self.chatid = chatid
         self.keydir = keydir
         self.configDir = configDir
-        self.token = open(f"{keydir}frigtoken.txt").readline().strip()
-        self.openaikey = open(f"{keydir}openai_key.txt").readline().strip()
-        self.riotkey = open(f"{keydir}riotapi.txt").readline().strip()
-        self.lastfap =  self.load_lastfap()
-        
+        self.read_saved_state(configDir)
+
         self.lol = lolManager(self.riotkey, self.configDir)
-        openai.api_key = self.openaikey
         self.client = zenon.Client(self.token)
-
-        self.user_IDs = self.load_user_ids()
-
-        self.botname = self.user_IDs["FriggBot2000"]
 
         self.commands = {"!help":self.help_resp, # a dict of associations between commands (prefaced with a '!') and the functions they call to generate responses.
                          "!commands":self.help_resp,
@@ -31,6 +26,7 @@ class Frig:
                          "!lastfap":self.lastfap_resp,
                          "!fapfail":self.fapfail_resp,
                          "!lostfap":self.fapfail_resp,
+                         "!rps":self.rps_resp,
                          "!lp":self.lp_resp}
 
         self.echo_resps = [ # the static repsonse messages for trigger words which I term "echo" responses
@@ -48,8 +44,15 @@ class Frig:
                        }
 
 
-        self.last_msg_id = 0 # unique message id. Used to check if a new message has appeared
-        self.loop_delay = 0.3 # delay in seconds between checking for new mesages
+    def read_saved_state(self, dirname):
+        self.user_IDs = self.load_user_ids()
+        self.token = open(f"{self.keydir}frigtoken.txt").readline().strip()
+        self.openaikey = open(f"{self.keydir}openai_key.txt").readline().strip()
+        self.riotkey = open(f"{self.keydir}riotapi.txt").readline().strip()
+        self.lastfap =  self.load_lastfap()
+        self.botname = self.user_IDs["FriggBot2000"]
+        self.rps_scores = self.load_rps_scores()
+        openai.api_key = self.openaikey
 
     def arcane_resp(self, msg):
         delta = datetime.datetime(2024,12,25, 21, 5, 0) - datetime.datetime.now()
@@ -57,7 +60,7 @@ class Frig:
         return f"arcane s2 comes out in approximately {days} days, {hours} hours, {minutes} minutes, and {seconds} seconds. hang in there."
 
     def gpt_resp(self, msg):
-        print(f"{bold}{gray}[GPT]: {endc}{lemon}text completion requested{endc}")
+        print(f"{bold}{gray}[GPT]: {endc}{yellow}text completion requested{endc}")
         try:
             completion = openai.ChatCompletion.create(model="gpt-4", messages=[{"role": "user", "content": msg["content"]}])
             resp = completion.choices[0].message.content
@@ -71,6 +74,30 @@ class Frig:
         resp = f"commands:"
         for c in self.commands: resp += f"\n{c}"
         return resp
+
+    def rps_resp(self, msg):
+        print(self.rps_scores)
+        rollname = msg["content"].replace("!rps", "").strip()
+        authorid = msg["author"]["id"]
+        if rollname == "": return f"Your score is {self.rps_scores[authorid+'w']}/{self.rps_scores[authorid+'d']}/{self.rps_scores[authorid+'l']}"
+        if authorid+"w" not in self.rps_scores:
+            print(f"{bold}{gray}[RPS]: {endc}{yellow}new RPS player found {endc}")
+            self.rps_scores[authorid+"d"] = 0
+            self.rps_scores[authorid+"w"] = 0
+            self.rps_scores[authorid+"l"] = 0
+
+        opts = ["rock", "paper", "scissors"]
+        if rollname not in opts: return f"{rollname} is not an option. please choose one of {opts}"
+        
+        botroll = random.randint(0, 2)
+        roll = opts.index(rollname)
+        if roll == botroll: report = f"We both chose {opts[botroll]}"; self.rps_scores[authorid+"d"] += 1
+        if (roll+2)%3 == botroll: report = f"I chose {opts[botroll]}. W"; self.rps_scores[authorid+"w"] += 1
+        if (roll+1)%3 == botroll: report = f"I chose {opts[botroll]}. shitter"; self.rps_scores[authorid+"l"] += 1
+        self.write_rps_scores()
+        
+        update = f"Your score is now {self.rps_scores[authorid+'w']}/{self.rps_scores[authorid+'d']}/{self.rps_scores[authorid+'l']}"
+        return [report, update]
 
     def lp_resp(self, msg):
         summ = msg["content"].replace("!lp", "").strip()
@@ -96,7 +123,7 @@ class Frig:
             try:
                 author = self.user_IDs[msg["author"]["global_name"]]
             except KeyError:
-                print(f"{bold}{gray}[FRIG]: {endc}{lemon}new username '{msg['author']['global_name']}' detected. storing their ID. {endc}")
+                print(f"{bold}{gray}[FRIG]: {endc}{yellow}new username '{msg['author']['global_name']}' detected. storing their ID. {endc}")
                 self.user_IDs[msg["author"]["global_name"]] = msg["author"]["id"]
                 with open(f"{self.configDir}userIDs.json", "w") as f:
                     f.write(json.dumps(self.user_IDs, indent=4))
@@ -110,7 +137,7 @@ class Frig:
         if body.startswith("!"):
             try:
                 command = body.split(" ")[0]
-                print(f"{bold}{gray}[FRIG]: {endc}{lemon} command found: {command}{endc}")
+                print(f"{bold}{gray}[FRIG]: {endc}{yellow} command found: {command}{endc}")
                 return self.commands[command](msg)
             except KeyError as e:
                 print(f"{bold}{gray}[FRIG]: {endc}{red} detected command '{command}' but type was unrecognized{endc}")
@@ -125,7 +152,14 @@ class Frig:
     def load_user_ids(self):
         with open(f"{self.configDir}userIDs.json", 'r') as f:
             return json.load(f)
-
+    
+    def load_rps_scores(self):
+        with open(f"{self.configDir}rpsScores.json", 'r') as f:
+            return json.load(f)
+    def write_rps_scores(self):
+        with open(f"{self.configDir}rpsScores.json", "w") as f:
+            f.write(json.dumps(self.rps_scores, indent=4))
+    
     def load_lastfap(self):
         try:
             return dateload(f"{self.configDir}lastfap.txt")
@@ -156,6 +190,9 @@ class Frig:
         datesave(datetime.datetime.now(), f"{self.configDir}lastfap.txt")
         self.lastfap = self.load_lastfap()
 
+
+
+
 class lolManager: # this handles requests to the riot api
     def __init__(self, riotkey, saveDir):
         self.saveDir = saveDir
@@ -170,12 +207,12 @@ class lolManager: # this handles requests to the riot api
         try:
             return self.summonerIDs[str(summonerName)]
         except KeyError:
-            print(f"{gray}{bold}[LOL]:{endc} {lemon}requested summonerID for new name:' {summonerName}'{endc}")
+            print(f"{gray}{bold}[LOL]:{endc} {yellow}requested summonerID for new name:' {summonerName}'{endc}")
             url = f"https://{region}.api.riotgames.com/lol/summoner/v4/summoners/by-name/{summonerName}?api_key={self.riotkey}"
             get = requests.get(url)
             if get.status_code == 200:
                 self.summonerIDs[str(summonerName)] = get.json()["id"]
-                print(f"{gray}{bold}[LOL]:{endc} {lemon}stored summonerID for new username: '{summonerName}'{endc}")
+                print(f"{gray}{bold}[LOL]:{endc} {yellow}stored summonerID for new username: '{summonerName}'{endc}")
                 self.store_player_ids()
                 return self.summonerIDs[str(summonerName)]
             else:
@@ -221,3 +258,6 @@ class lolManager: # this handles requests to the riot api
             return rep
         except ValueError: print(info); return f"got ranked info:\n'{info}',\n but failed to parse. (spam @eekay)"
     
+
+
+
