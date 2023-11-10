@@ -56,8 +56,9 @@ class Frig:
 
     def arcane_resp(self, msg):
         delta = datetime.datetime(2024,11,20, 21, 5, 0) - datetime.datetime.now()
-        days, hours, minutes, seconds = delta.days, delta.seconds//3600, (delta.seconds%3600)//60, delta.seconds%60
-        return f"arcane s2 comes out in approximately {days} days, {hours} hours, {minutes} minutes, and {seconds} seconds. hang in there."
+        years, days, hours, minutes, seconds = delta.days//365, delta.days, delta.seconds//3600, (delta.seconds%3600)//60, delta.seconds%60
+        if years < 1: return f"arcane s2 comes out in approximately {days} days, {hours} hours, {minutes} minutes, and {seconds} seconds. hang in there."
+        return f"arcane s2 comes out in approximately 1 year, {days-365} days, {hours} hours, {minutes} minutes, and {seconds} seconds. hang in there."
 
     def gpt_resp(self, msg):
         print(f"{bold}{gray}[GPT]: {endc}{yellow}text completion requested{endc}")
