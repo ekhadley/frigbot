@@ -7,7 +7,6 @@ class Frig:
     def __init__(self, keydir, configDir, chatid=551246526924455937):
         self.last_msg_id = 0 # unique message id. Used to check if a new message has appeared
         self.loop_delay = 0.3 # delay in seconds between checking for new mesages
-        
         self.chatid = chatid
         self.keydir = keydir
         self.configDir = configDir
