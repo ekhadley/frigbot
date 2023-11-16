@@ -138,6 +138,7 @@ class Frig:
             try:
                 command = body.split(" ")[0]
                 print(f"{bold}{gray}[FRIG]: {endc}{yellow} command found: {command}{endc}")
+                #self.client.typing_action(self.chatid, msg)
                 return self.commands[command](msg)
             except KeyError as e:
                 print(f"{bold}{gray}[FRIG]: {endc}{red} detected command '{command}' but type was unrecognized{endc}")
