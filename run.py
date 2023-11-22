@@ -7,13 +7,6 @@ parser.add_argument('chatid', help="channel id. defaults to kissy", nargs="?", t
 #chatid = 551246526924455937 # kissy
 #chatid = 972938534661009519 # eekay
 
-def run(frig):
-    print(bold, cyan, "\nFrigBot started!", endc)
-    while 1:
-        resp = frig.get_response()
-        frig.send(resp)
-        frig.wait()
-
 if __name__ == '__main__':
     nargs = len(sys.argv) - 1
     assert nargs <= 1, f"expected 1 or 0 arguments. got {nargs}:\n{sys.argv}"
@@ -30,12 +23,14 @@ if __name__ == '__main__':
 
     chatid = args.chatid
     frig = Frig(keydir=keydir, configDir=configDir, chatid=chatid) # eekay
-    i = 0
+    '''
     while 1:
         try:
-            run(frig)
+            frig.runloop()
         except Exception as e:
             print(f"{red}, {bold}, [FRIG] CRASHED WITH EXCEPTION:\n{e}")
             time.sleep(3)
     frig.send(f"frigbot has crashed. F for frigbot. spam @eekay")
-    assert 0, f"reached maximum consecutive crashes. aborting bot."
+    '''
+    frig.runloop()
+    #assert 0, f"reached maximum consecutive crashes. aborting bot."
