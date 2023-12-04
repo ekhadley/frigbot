@@ -180,9 +180,13 @@ class Frig:
     def runloop(self):
         print(bold, cyan, "\nFrigBot started!", endc)
         while 1:
-            resp = self.get_self_msg()
-            self.send(resp)
-            self.wait()
+            try:
+                resp = self.get_self_msg()
+                self.send(resp)
+                self.wait()
+            except Exception as e:
+                print(f"{red}, {bold}, [FRIG] CRASHED WITH EXCEPTION:\n{e}")
+                time.sleep(3)
 
     def write_rps_scores(self):
         with open(f"{self.configDir}rpsScores.json", "w") as f:
