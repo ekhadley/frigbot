@@ -17,6 +17,8 @@ class Frig:
         
         self.lol = lolManager(self.keys["riot"], self.configDir, "summonerIDs.json")
         self.yt = ytChannelTracker(self.keys["youtube"], "UCqq5t2vi_G753e19j6U-Ypg", self.configDir, "lastFemboy.json") # femboy fishing channelid
+
+        self.gifsearch("arcane", 300)
         
         self.commands = {"!help":self.help_resp, # a dict of associations between commands (prefaced with a '!') and the functions they call to generate responses.
                          "!commands":self.help_resp,
@@ -194,11 +196,8 @@ class Frig:
     def gifsearch(self, query, num):
         url = f"https://g.tenor.com/v2/search?q={query}&key={self.keys['tenor']}&limit={num}"
         r = requests.get(url)
-        urls = [g["url"] for g in json.loads(r.content)["results"]]
         gets = json.loads(r.content)["results"]
-        for i in gets:
-            print(i.keys())
-            print()
+        urls = [g["url"] for g in gets]
         return urls
     def randomgif(self, query, num):
         return random.choice(self.gifsearch(query, num))
