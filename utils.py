@@ -21,8 +21,8 @@ def daterep(dat):
     return dat.strftime("%Y-%b-%d (%H:%M:%S)")
 
 
-def dateload(pth):
-    with open(pth) as f:
+def dateload(dir_, name):
+    with open(f"{dir_}/{name}") as f:
         dstr = f.readline().strip()
     return datetime.datetime.strptime(dstr, "%Y-%b-%d (%H:%M:%S)")
 
@@ -31,4 +31,8 @@ def datesave(date, pth):
         f.write(daterep(date))
         f.close()
 
+
+def loadjson(dir_, name):
+    with open(f"{dir_}/{name}", "r") as f:
+        return json.load(f)
 

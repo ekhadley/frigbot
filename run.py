@@ -14,11 +14,11 @@ if __name__ == '__main__':
     
     system = platform.system()
     if system == "Windows":
-        keydir = "D:\\frig\\"
-        configDir = "D:\\wgmn\\frigbot\\config\\"
+        keydir = "D:\\frig"
+        configDir = "D:\\wgmn\\frigbot\\config"
     elif system == "Linux":
-        keydir = "/home/ek/Desktop/frigkeys/"
-        configDir = "/home/ek/Desktop/wgmn/frigbot/config/"
+        keydir = "/home/ek/Desktop/frigkeys"
+        configDir = "/home/ek/Desktop/wgmn/frigbot/config"
     else: assert 0, f"unrecognized host system: {system}"
 
     chatid = args.chatid
