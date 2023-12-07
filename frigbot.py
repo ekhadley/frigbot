@@ -174,7 +174,7 @@ class Frig:
         #    return self.arcane_reference_resp()
         key, state = "arcane", 0
         for c in body:
-            if c == key[state]: state += 1
+            if c.lower() == key[state]: state += 1
             if state == 6: return self.arcane_reference_resp()
         return ""
 
