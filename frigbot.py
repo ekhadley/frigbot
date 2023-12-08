@@ -32,6 +32,7 @@ class Frig:
                          "!lostfap":self.fapfail_resp,
                          "!rps":self.rps_resp,
                          "!fish":self.yt.forceCheckAndReport,
+                         "!gif":self.random_gif_resp,
                          "!lp":self.lp_resp}
 
         self.echo_resps = [ # the static repsonse messages for trigger words which I term "echo" responses
@@ -75,7 +76,8 @@ class Frig:
     def gpt_resp(self, msg):
         print(f"{bold}{gray}[GPT]: {endc}{yellow}text completion requested{endc}")
         try:
-            completion = openai.ChatCompletion.create(model="gpt-4", messages=[{"role": "user", "content": msg["content"]}])
+            prompt = msg['content'].replace("!gpt", "").strip()
+            completion = openai.ChatCompletion.create(model="gpt-4", messages=[{"role": "user", "content": prompt}])
             resp = completion.choices[0].message.content
             print(f"{bold}{gray}[GPT]: {endc}{green}text completion generated {endc}")
             return resp
@@ -201,6 +203,9 @@ class Frig:
         return urls
     def randomgif(self, query, num):
         return random.choice(self.gifsearch(query, num))
+    def random_gif_resp(self, msg, num=500):
+        query = msg['content'].replace("!gif", "").strip()
+        return self.randomgif(query, num)
 
     def faptime(self):
         delta = datetime.datetime.now() - self.lastfap
