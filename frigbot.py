@@ -172,13 +172,11 @@ class Frig:
             if e in bsplit:
                 print(f"{bold}{gray}[FRIG]: {endc}{gray} issuing echo for '{e}'{endc}")
                 return self.echoes[e]
-        #if set("arcane").issubset(set(body)):
-        #    return self.arcane_reference_resp()
+        return ""
         key, state = "arcane", 0
         for c in body:
             if c.lower() == key[state]: state += 1
             if state == 6: return self.arcane_reference_resp()
-        return ""
 
     def runloop(self):
         print(bold, cyan, "\nFrigBot started!", endc)
