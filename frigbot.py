@@ -166,17 +166,19 @@ class Frig:
             return self.echo_resp(body)
         return ""
 
-    def echo_resp(self, body): # determines which, if any, echo response the bot should respond with. first checks phrases then other conditionals
+    def echo_resp(self, body, arcane_reference_prob=.10): # determines which, if any, echo response the bot should respond with. first checks phrases then other conditionals
         bsplit = body.split(" ")
         for e in self.echoes:
             if e in bsplit:
                 print(f"{bold}{gray}[FRIG]: {endc}{gray} issuing echo for '{e}'{endc}")
                 return self.echoes[e]
+        key = "arcane"
+        state = 0
+        if np.random.uniform() < arcane_reference_prob:
+            for c in body:
+                if c.lower() == key[state]: state += 1
+                if state == 6: return self.arcane_reference_resp() 
         return ""
-        key, state = "arcane", 0
-        for c in body:
-            if c.lower() == key[state]: state += 1
-            if state == 6: return self.arcane_reference_resp()
 
     def runloop(self):
         print(bold, cyan, "\nFrigBot started!", endc)
