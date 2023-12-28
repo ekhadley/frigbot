@@ -322,11 +322,11 @@ class ytChannelTracker:
             return changed
         return False
 
-    def reportVid(self): return f"new femboy fishing:\nurl=https://youtube.com/watch?v={self.mostRecentVidId}"
+    def reportVid(self): return f"new femboy fishing:\nhttps://youtube.com/watch?v={self.mostRecentVidId}"
     def forceCheckAndReport(self, *args): # forces check, and just gives link
         changed, newest = self.getLatestVidId()
         self.recordNewRead(videoId=newest)
-        return f"url=https://youtube.com/watch?v={self.mostRecentVidId}"
+        return f"https://youtube.com/watch?v={self.mostRecentVidId}"
 
     def readSave(self): # reads stored videoID of most recent 
         with open(self.savePath, 'r') as f:
