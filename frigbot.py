@@ -53,13 +53,9 @@ class Frig:
 
     def read_saved_state(self, dirname):
         self.user_IDs = loadjson(self.configDir, "userIDs.json")
-        self.keys = loadjson(self.keydir, "keys.json")
         self.rps_scores = loadjson(self.configDir, "rpsScores.json")
         self.lastfap =  dateload(self.configDir, "lastfap.txt")
-        #self.token = open(f"{self.keydir}frigtoken.txt").readline().strip()
-        #self.openaikey = open(f"{self.keydir}openai_key.txt").readline().strip()
-        #self.riotkey = open(f"{self.keydir}riotapi.txt").readline().strip()
-        #self.ytkey = open(f"{self.keydir}ytv3key.txt").readline().strip()
+        self.keys = loadjson(self.keydir, "keys.json")
         openai.api_key = self.keys["openai"]
         self.botname = self.user_IDs["FriggBot2000"]
 
@@ -148,7 +144,7 @@ class Frig:
         return self.get_timed_messages()
 
     def get_timed_messages(self): # this function checks all of the messages which are not responses or echoes, but required to happen after a set delay or specific time.
-        #if self.yt.checkLatestUpload(): return self.yt.reportVid()
+        if self.yt.checkLatestUpload(): return self.yt.reportVid()
         return ""
 
     def get_response_to_new_msg(self, msg): # determines how to respond to a newly detected message. 
@@ -166,7 +162,7 @@ class Frig:
             return self.echo_resp(body)
         return ""
 
-    def echo_resp(self, body, arcane_reference_prob=.10): # determines which, if any, echo response the bot should respond with. first checks phrases then other conditionals
+    def echo_resp(self, body, arcane_reference_prob=.10): # determines which, if any, (non command) response to respond with. first checks phrases then other conditionals
         bsplit = body.split(" ")
         for e in self.echoes:
             if e in bsplit:
@@ -203,7 +199,7 @@ class Frig:
         return urls
     def randomgif(self, query, num):
         return random.choice(self.gifsearch(query, num))
-    def random_gif_resp(self, msg, num=500):
+    def random_gif_resp(self, msg, num=100):
         query = msg['content'].replace("!gif", "").strip()
         return self.randomgif(query, num)
 
@@ -347,6 +343,8 @@ class ytChannelTracker:
 
     def timeSinceCheck(self): # returns the amount of time since last 
         delta = datetime.datetime.now() - self.lastCheckTime
+        sec = delta.days*24*60*60 + delta.seconds
+        #print(f"{sec} sec since last check. check interval is {self.checkInterval} sec. checking in {self.checkInterval - sec}")
         return delta.days*24*60*60 + delta.seconds
 
     def shouldCheck(self): return self.timeSinceCheck() >= self.checkInterval
