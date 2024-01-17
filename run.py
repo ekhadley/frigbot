@@ -14,15 +14,15 @@ if __name__ == '__main__':
     
     system = platform.system()
     if system == "Windows":
-        keydir = "D:\\frig"
+        keypath = "D:\\frig\\keys.json"
         configDir = "D:\\wgmn\\frigbot\\config"
     elif system == "Linux":
-        keydir = "/home/ek/Desktop/frigkeys"
+        keypath = "/home/ek/Desktop/keys.json"
         configDir = "/home/ek/Desktop/wgmn/frigbot/config"
     else: assert 0, f"unrecognized host system: {system}"
 
     chatid = args.chatid
-    frig = Frig(keydir=keydir, configDir=configDir, chatid=chatid) # eekay
+    frig = Frig(keypath=keypath, configDir=configDir, chatid=chatid) # eekay
     '''
     while 1:
         try:

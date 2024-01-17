@@ -1,24 +1,18 @@
-import datetime, random, math, json, requests, time, os, numpy as np
-from googleapiclient.discovery import build
-from Zenon.zenon import zenon
-import openai
 from utils import *
 
 class Frig:
-    def __init__(self, keydir, configDir, chatid):
-        self.last_msg_id = 0 # unique message id. Used to check if a new message has appeared
+    def __init__(self, keypath, configDir, chatid):
+        self.last_msg_id = 0 # unique message id. Used to check if a new message has been already seen
         self.loop_delay = 0.3 # delay in seconds between checking for new mesages
         self.chatid = chatid
-        self.keydir = keydir
+        self.keypath = keypath
         self.configDir = configDir
         self.read_saved_state(configDir)
 
         self.client = zenon.Client(self.keys["discord"])
         
-        self.lol = lolManager(self.keys["riot"], self.configDir, "summonerIDs.json")
-        self.yt = ytChannelTracker(self.keys["youtube"], "UCqq5t2vi_G753e19j6U-Ypg", self.configDir, "lastFemboy.json") # femboy fishing channelid
-
-        self.gifsearch("arcane", 300)
+        self.lol = lolManager(self.keys["riot"], f"{self.configDir}/summonerIDs.json")
+        self.yt = ytChannelTracker(self.keys["youtube"], "UCqq5t2vi_G753e19j6U-Ypg", f"{self.configDir}/lastFemboy.json") # femboy fishing channelid
         
         self.commands = {"!help":self.help_resp, # a dict of associations between commands (prefaced with a '!') and the functions they call to generate responses.
                          "!commands":self.help_resp,
@@ -32,6 +26,7 @@ class Frig:
                          "!lostfap":self.fapfail_resp,
                          "!rps":self.rps_resp,
                          "!fish":self.yt.forceCheckAndReport,
+                         "!ttfish":self.yt.ttfish,
                          "!gif":self.random_gif_resp,
                          "!lp":self.lp_resp}
 
@@ -55,7 +50,7 @@ class Frig:
         self.user_IDs = loadjson(self.configDir, "userIDs.json")
         self.rps_scores = loadjson(self.configDir, "rpsScores.json")
         self.lastfap =  dateload(self.configDir, "lastfap.txt")
-        self.keys = loadjson(self.keydir, "keys.json")
+        self.keys = loadjson(self.keypath)
         openai.api_key = self.keys["openai"]
         self.botname = self.user_IDs["FriggBot2000"]
 
@@ -160,7 +155,6 @@ class Frig:
             return f"command: '{command}' was not recognized"
         else:
             return self.echo_resp(body)
-        return ""
 
     def echo_resp(self, body, arcane_reference_prob=.10): # determines which, if any, (non command) response to respond with. first checks phrases then other conditionals
         bsplit = body.split(" ")
@@ -231,10 +225,10 @@ class Frig:
 
 
 class lolManager: # this handles requests to the riot api
-    def __init__(self, riotkey, saveDir, filename):
-        self.savePath = f"{saveDir}/{filename}"
+    def __init__(self, riotkey, savePath):
+        self.savePath = savePath
         self.riotkey = riotkey
-        self.summonerIDs = loadjson(saveDir, filename)
+        self.summonerIDs = loadjson(savePath)
 
     def load_player_ids(self):
         with open(self.savePath, 'r') as f:
@@ -296,9 +290,9 @@ class lolManager: # this handles requests to the riot api
         except ValueError: print(info); return f"got ranked info:\n'{info}',\n but failed to parse. (spam @eekay)"
 
 class ytChannelTracker:
-    def __init__(self, ytkey, channelID, configDir, filename, checkInterval=10800):
+    def __init__(self, ytkey, channelID, savePath, checkInterval=10800):
         self.checkInterval = checkInterval
-        self.savePath = f"{configDir}/{filename}" # where on disk do we keep most recent video ID (not rly a log, just the most recent)
+        self.savePath = savePath # where on disk do we keep most recent video ID (not rly a log, just the most recent)
         self.channelID = channelID # the channelid (not the visible one) of the channel we are monitoring
         self.mostRecentVidId, self.lastCheckTime = self.readSave() # read the most recent video ID and time of last api request
         self.yt = build('youtube', 'v3', developerKey=ytkey) # initialize our client
@@ -317,7 +311,11 @@ class ytChannelTracker:
 
     def checkLatestUpload(self): # limits rate of checks, returns wether a new vid has been found, updates saved state
         if self.shouldCheck():
-            changed, newest = self.getLatestVidId()
+            try:
+                changed, newest = self.getLatestVidId()
+            except Exception as e:
+                print(f"{red} failed to read latest upload from channel {self.channelID}. Got exception:\n{e}")
+                return False
             self.recordNewRead(videoId=newest)
             return changed
         return False
@@ -348,6 +346,10 @@ class ytChannelTracker:
         return delta.days*24*60*60 + delta.seconds
 
     def shouldCheck(self): return self.timeSinceCheck() >= self.checkInterval
+    def ttfish(self, *args, **kwargs):
+        delta = self.checkInterval - self.timeSinceCheck()
+        hours, minutes, seconds = delta//3600, (delta%3600)//60, delta%60
+        return f"checking in {hours}h, {minutes}m, {seconds}s seconds" 
 
     def now(self): return datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
     def str2dt(self, dstr): return datetime.datetime.strptime(dstr, "%Y-%m-%dT%H:%M:%SZ")
