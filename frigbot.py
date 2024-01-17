@@ -313,10 +313,11 @@ class ytChannelTracker:
         if self.shouldCheck():
             try:
                 changed, newest = self.getLatestVidId()
+                self.recordNewRead(videoId=newest)
             except Exception as e:
                 print(f"{red} failed to read latest upload from channel {self.channelID}. Got exception:\n{e}")
+                self.recordNewRead(videoId=None)
                 return False
-            self.recordNewRead(videoId=newest)
             return changed
         return False
 
