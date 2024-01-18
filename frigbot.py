@@ -12,7 +12,10 @@ class Frig:
         self.client = zenon.Client(self.keys["discord"])
         
         self.lol = lolManager(self.keys["riot"], f"{self.configDir}/summonerIDs.json")
-        self.yt = ytChannelTracker(self.keys["youtube"], "UCqq5t2vi_G753e19j6U-Ypg", f"{self.configDir}/lastFemboy.json") # femboy fishing channelid
+        
+        self.trackedChannels = []
+        self.addNewTrackedChannel("femboy fishing", "UCqq5t2vi_G753e19j6U-Ypg", "femboyFishing.json")
+        self.addNewTrackedChannel("femboy physics", "UCTE3WPc1oFdNYT8SnZCQW5w", "femboyPhysics.json")
         
         self.commands = {"!help":self.help_resp, # a dict of associations between commands (prefaced with a '!') and the functions they call to generate responses.
                          "!commands":self.help_resp,
@@ -25,8 +28,10 @@ class Frig:
                          "!fapfail":self.fapfail_resp,
                          "!lostfap":self.fapfail_resp,
                          "!rps":self.rps_resp,
-                         "!fish":self.yt.forceCheckAndReport,
-                         "!ttfish":self.yt.ttfish,
+                         "!fish":self.trackedChannels[0].forceCheckAndReport,
+                         "!ttfish":self.trackedChannels[0].ttcheck,
+                         "!physics":self.trackedChannels[1].forceCheckAndReport,
+                         "!ttphysics":self.trackedChannels[1].ttcheck,
                          "!gif":self.random_gif_resp,
                          "!lp":self.lp_resp}
 
@@ -138,9 +143,13 @@ class Frig:
             return self.get_response_to_new_msg(msg)
         return self.get_timed_messages()
 
-    def get_timed_messages(self): # this function checks all of the messages which are not responses or echoes, but required to happen after a set delay or specific time.
-        if self.yt.checkLatestUpload(): return self.yt.reportVid()
-        return ""
+    def get_timed_messages(self): # checks for messages triggered by timing or external events
+        reports = []
+        for channel in self.trackedChannels:
+            if channel.checkLatestUpload():
+                reports.append(channel.reportVid()) # broken in the case where this loop should report multiple new videos. ugh.
+        if len(reports) == 0: return "" 
+        return reports
 
     def get_response_to_new_msg(self, msg): # determines how to respond to a newly detected message. 
         body = msg["content"].lstrip()
@@ -185,6 +194,11 @@ class Frig:
         with open(f"{self.configDir}rpsScores.json", "w") as f:
             f.write(json.dumps(self.rps_scores, indent=4))
     
+    def addNewTrackedChannel(self, channelName, channelID, saveFileName):
+        fname = saveFileName if saveFileName.endswith(".json") else saveFileName+".json"
+        tracker = ytChannelTracker(channelName, self.keys["youtube"], channelID, f"{self.configDir}/{fname}")
+        self.trackedChannels.append(tracker)
+
     def gifsearch(self, query, num):
         url = f"https://g.tenor.com/v2/search?q={query}&key={self.keys['tenor']}&limit={num}"
         r = requests.get(url)
@@ -290,7 +304,8 @@ class lolManager: # this handles requests to the riot api
         except ValueError: print(info); return f"got ranked info:\n'{info}',\n but failed to parse. (spam @eekay)"
 
 class ytChannelTracker:
-    def __init__(self, ytkey, channelID, savePath, checkInterval=10800):
+    def __init__(self, name, ytkey, channelID, savePath, checkInterval=10800):
+        self.channelName = name
         self.checkInterval = checkInterval
         self.savePath = savePath # where on disk do we keep most recent video ID (not rly a log, just the most recent)
         self.channelID = channelID # the channelid (not the visible one) of the channel we are monitoring
@@ -298,32 +313,34 @@ class ytChannelTracker:
         self.yt = build('youtube', 'v3', developerKey=ytkey) # initialize our client
 
     def getLatestVidId(self): # uses ytv3 api to get the time and id of most recent video upload from channel
-        request = self.yt.channels().list(part='contentDetails', id=self.channelID)
-        response = request.execute()
-        playlist_id = response['items'][0]['contentDetails']['relatedPlaylists']['uploads']
-        
-        playlist = self.yt.playlistItems().list(part='contentDetails', playlistId=playlist_id, maxResults=1)
-        plresp = playlist.execute()
-        videoId = plresp['items'][0]['contentDetails']['videoId'].strip()
-        changed = self.mostRecentVidId != videoId
-        self.mostRecentVidId = videoId
-        return changed, videoId
+        print(f"{bold}{gray}[YT]: {endc}{yellow}checking latest video from channel: {self.channelName}{endc}")
+        try:
+            request = self.yt.channels().list(part='contentDetails', id=self.channelID)
+            response = request.execute()
+            playlist_id = response['items'][0]['contentDetails']['relatedPlaylists']['uploads']
+            
+            playlist = self.yt.playlistItems().list(part='contentDetails', playlistId=playlist_id, maxResults=1)
+            plresp = playlist.execute()
+            videoId = plresp['items'][0]['contentDetails']['videoId'].strip()
+            changed = self.mostRecentVidId != videoId
+            self.mostRecentVidId = videoId
+            print(f"{bold}{gray}[YT]: {endc}{green} successfully retreived id of latest video from channel: {self.channelName} {endc}")
+            return changed, videoId, True
+        except Exception as e:
+            print(f"{bold}{gray}[YT]: {endc}{red}upload retreival for channel: '{self.channelName}' failed with exception:\n{e}{endc}")
+            return None, None, False
 
     def checkLatestUpload(self): # limits rate of checks, returns wether a new vid has been found, updates saved state
         if self.shouldCheck():
-            try:
-                changed, newest = self.getLatestVidId()
-                self.recordNewRead(videoId=newest)
-            except Exception as e:
-                print(f"{red} failed to read latest upload from channel {self.channelID}. Got exception:\n{e}")
-                self.recordNewRead(videoId=None)
-                return False
+            changed, newest, succeeded = self.getLatestVidId()
+            self.recordNewRead(videoId=newest)
+            if not succeeded: return False
             return changed
         return False
 
-    def reportVid(self): return f"new femboy fishing:\nhttps://youtube.com/watch?v={self.mostRecentVidId}"
+    def reportVid(self): return f"new video from {self.channelName}:\nhttps://youtube.com/watch?v={self.mostRecentVidId}"
     def forceCheckAndReport(self, *args): # forces check, and just gives link
-        changed, newest = self.getLatestVidId()
+        changed, newest, _ = self.getLatestVidId()
         self.recordNewRead(videoId=newest)
         return f"https://youtube.com/watch?v={self.mostRecentVidId}"
 
@@ -333,12 +350,16 @@ class ytChannelTracker:
             videoId, lastread = save["videoId"], self.str2dt(save["lastCheckTime"])
         return videoId, lastread
     def recordNewRead(self, videoId=None): # writes the current most recent upload to disk
-        with open(self.savePath, "r") as f:
-            saved = json.load(f)
-        saved["lastCheckTime"] = self.now()
-        if videoId is not None: saved["videoId"] = videoId
-        with open(self.savePath, "w") as f:
-            f.write(json.dumps(saved, indent=4))
+        self.lastCheckTime = datetime.datetime.now()
+        try:
+            with open(self.savePath, "r") as f:
+                saved = json.load(f)
+            saved["lastCheckTime"] = self.now()
+            if videoId is not None: saved["videoId"] = videoId
+            with open(self.savePath, "w") as f:
+                f.write(json.dumps(saved, indent=4))
+        except Exception as e:
+            print(f"{red} recordNewRead for channel: '{self.channelName}' failed with exception:\n{e}")
 
     def timeSinceCheck(self): # returns the amount of time since last 
         delta = datetime.datetime.now() - self.lastCheckTime
@@ -347,7 +368,7 @@ class ytChannelTracker:
         return delta.days*24*60*60 + delta.seconds
 
     def shouldCheck(self): return self.timeSinceCheck() >= self.checkInterval
-    def ttfish(self, *args, **kwargs):
+    def ttcheck(self, *args, **kwargs):
         delta = self.checkInterval - self.timeSinceCheck()
         hours, minutes, seconds = delta//3600, (delta%3600)//60, delta%60
         return f"checking in {hours}h, {minutes}m, {seconds}s seconds" 
