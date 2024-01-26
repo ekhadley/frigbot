@@ -23,6 +23,7 @@ class Frig:
                          "!gpt4":self.gpt_resp,
                          "!gpt":self.gpt_resp,
                          "!arcane":self.arcane_resp,
+                         "!horizon":self.horizon_resp,
                          "!faptime":self.faptime_resp,
                          "!lastfap":self.lastfap_resp,
                          "!fapfail":self.fapfail_resp,
@@ -64,6 +65,11 @@ class Frig:
         years, days, hours, minutes, seconds = delta.days//365, delta.days, delta.seconds//3600, (delta.seconds%3600)//60, delta.seconds%60
         if years < 1: return f"arcane s2 comes out in approximately {days} days, {hours} hours, {minutes} minutes, and {seconds} seconds. hang in there."
         return f"arcane s2 comes out in approximately 1 year, {days-365} days, {hours} hours, {minutes} minutes, and {seconds} seconds. hang in there."
+    def horizon_resp(self, msg):
+        delta = datetime.datetime(2024, 3, 21, 12, 0, 0) - datetime.datetime.now()
+        years, days, hours, minutes, seconds = delta.days//365, delta.days, delta.seconds//3600, (delta.seconds%3600)//60, delta.seconds%60
+        if years < 1: return f"horizon forbidden west comes out on pc in approximately {days} days, {hours} hours, {minutes} minutes, and {seconds} seconds. hang in there."
+        return f"horizon forbidden west comes out on pc in approximately 1 year, {days-365} days, {hours} hours, {minutes} minutes, and {seconds} seconds. hang in there."
 
     def arcane_reference_resp(self, query="arcane", num=500):
         phrases = ["holy shit was that an arcane reference", "literal chills", "my honest reaction to that information:", "me rn:", "this is just like arcane fr", ""]
