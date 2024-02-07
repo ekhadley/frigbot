@@ -74,6 +74,8 @@ class Frig:
     def arcane_reference_resp(self, query="arcane", num=500):
         phrases = ["holy shit was that an arcane reference", "literal chills", "my honest reaction to that information:", "me rn:", "this is just like arcane fr", ""]
         return [random.choice(phrases), self.randomgif(query, num)]
+    def itysl_reference_resp(self, query="itysl", num=500):
+        return self.randomgif(query, num)
 
     def gpt_resp(self, msg):
         print(f"{bold}{gray}[GPT]: {endc}{yellow}text completion requested{endc}")
@@ -171,18 +173,18 @@ class Frig:
         else:
             return self.echo_resp(body)
 
-    def echo_resp(self, body, arcane_reference_prob=.10): # determines which, if any, (non command) response to respond with. first checks phrases then other conditionals
+    def echo_resp(self, body, reference_gif_prob=1.0): # determines which, if any, (non command) response to respond with. first checks phrases then other conditionals
         bsplit = body.split(" ")
         for e in self.echoes:
             if e in bsplit:
                 print(f"{bold}{gray}[FRIG]: {endc}{gray} issuing echo for '{e}'{endc}")
                 return self.echoes[e]
-        key = "arcane"
-        state = 0
-        if np.random.uniform() < arcane_reference_prob:
-            for c in body:
-                if c.lower() == key[state]: state += 1
-                if state == 6: return self.arcane_reference_resp() 
+        gifs = []
+        if np.random.uniform() < reference_gif_prob:
+            if contains_scrambled(body, "itysl"): gifs.append(self.itysl_reference_resp())
+        if np.random.uniform() < reference_gif_prob:
+            if contains_scrambled(body, "arcane"): gifs.append(self.arcane_reference_resp())
+        if len(gifs) > 0: return gifs
         return ""
 
     def runloop(self):

@@ -17,6 +17,14 @@ bold = '\033[1m'
 underline = '\033[4m'
 endc = '\033[0m'
 
+def contains_scrambled(msg, key):
+    state = 0
+    for c in msg:
+        if c.lower() == key[state]: state += 1
+        if state == len(key): return True
+    return False
+
+
 def daterep(dat):
     return dat.strftime("%Y-%b-%d (%H:%M:%S)")
 
