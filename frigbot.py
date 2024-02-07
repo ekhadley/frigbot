@@ -173,7 +173,7 @@ class Frig:
         else:
             return self.echo_resp(body)
 
-    def echo_resp(self, body, reference_gif_prob=1.0): # determines which, if any, (non command) response to respond with. first checks phrases then other conditionals
+    def echo_resp(self, body, reference_gif_prob=0.1): # determines which, if any, (non command) response to respond with. first checks phrases then other conditionals
         bsplit = body.split(" ")
         for e in self.echoes:
             if e in bsplit:
