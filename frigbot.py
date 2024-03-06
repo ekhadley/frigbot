@@ -13,6 +13,9 @@ class Frig:
         self.client = zenon.Client(self.keys["discord"])
         
         self.lol = lolManager(self.keys["riot"], f"{self.configDir}/summonerIDs.json")
+
+
+        self.send("")
         
         self.trackedChannels = []
         self.addNewTrackedChannel("femboy fishing", "UCqq5t2vi_G753e19j6U-Ypg", "femboyFishing.json")
