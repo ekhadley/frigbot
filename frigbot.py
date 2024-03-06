@@ -8,6 +8,7 @@ class Frig:
         self.keypath = keypath
         self.configDir = configDir
         self.read_saved_state(configDir)
+        
 
         self.client = zenon.Client(self.keys["discord"])
         
@@ -50,8 +51,6 @@ class Frig:
                        "juckyard":self.echo_resps[1]
                        }
 
-
-
     def read_saved_state(self, dirname):
         self.user_IDs = loadjson(self.configDir, "userIDs.json")
         self.rps_scores = loadjson(self.configDir, "rpsScores.json")
@@ -83,6 +82,10 @@ class Frig:
             prompt = msg['content'].replace("!gpt", "").strip()
             completion = openai.ChatCompletion.create(model="gpt-4", messages=[{"role": "user", "content": prompt}])
             resp = completion.choices[0].message.content
+            if len(resp) >= 2000:
+                nsplit = math.ceil(len(resp)/2000)
+                interval = len(resp)//nsplit
+                resp = [resp[i*interval:(i+1)*interval] for i in range(nsplit)]
             print(f"{bold}{gray}[GPT]: {endc}{green}text completion generated {endc}")
             return resp
         except Exception as e:
@@ -128,7 +131,7 @@ class Frig:
         elif isinstance(msg, str) and msg != "":
             self.client.send_message(self.chatid, msg)
 
-    def get_last_msg(self) -> str: # reads the most recent message in the chat, returns a json
+    def get_last_msg(self): # reads the most recent message in the chat, returns a json
         try:
             msg = self.client.get_message(self.chatid)
             return msg
@@ -144,7 +147,7 @@ class Frig:
             except KeyError:
                 print(f"{bold}{gray}[FRIG]: {endc}{yellow}new username '{msg['author']['global_name']}' detected. storing their ID. {endc}")
                 self.user_IDs[msg["author"]["global_name"]] = msg["author"]["id"]
-                with open(f"{self.configDir}userIDs.json", "w") as f:
+                with open(f"{self.configDir}/userIDs.json", "w") as f:
                     f.write(json.dumps(self.user_IDs, indent=4))
             
             self.last_msg_id = msg["id"]
@@ -199,7 +202,7 @@ class Frig:
                 time.sleep(3)
 
     def write_rps_scores(self):
-        with open(f"{self.configDir}rpsScores.json", "w") as f:
+        with open(f"{self.configDir}/rpsScores.json", "w") as f:
             f.write(json.dumps(self.rps_scores, indent=4))
     
     def addNewTrackedChannel(self, channelName, channelID, saveFileName):
@@ -239,7 +242,7 @@ class Frig:
         except KeyError:
             print(bold, red, f"Xylotile's userID could not be found, so the fapstreak update could not be verified. thats not good! spam @eekay")
     def set_last_fap(self):
-        datesave(datetime.datetime.now(), f"{self.configDir}lastfap.txt")
+        datesave(datetime.datetime.now(), f"{self.configDir}/lastfap.txt")
         self.lastfap = self.load_lastfap()
 
     def wait(self):
