@@ -4,12 +4,12 @@ from frigbot import *
 
 parser = argparse.ArgumentParser()
 parser.add_argument('chatid', help="channel id. defaults to kissy", nargs="?", type=int, default=551246526924455937)
+parser.add_argument("-q", "--quiet", action="store_true", dest="quiet", help="Run the script in quiet mode (no output)")
 #chatid = 551246526924455937 # kissy
 #chatid = 972938534661009519 # eekay
-
 if __name__ == '__main__':
     nargs = len(sys.argv) - 1
-    assert nargs <= 1, f"expected 1 or 0 arguments. got {nargs}:\n{sys.argv}"
+    assert nargs <= 2, f"expected 1 or 0 arguments. got {nargs}:\n{sys.argv}"
     args = parser.parse_args()
     
     system = platform.system()
