@@ -182,7 +182,7 @@ class Frig:
         gifs = []
         if np.random.uniform() < reference_gif_prob:
             if contains_scrambled(body, "itysl"): gifs.append(self.itysl_reference_resp())
-        if np.random.uniform() < reference_gif_prob:
+        if np.random.uniform() < reference_gif_prob / 10:
             if contains_scrambled(body, "arcane"): gifs.append(self.arcane_reference_resp())
         if len(gifs) > 0: return gifs
         return ""
