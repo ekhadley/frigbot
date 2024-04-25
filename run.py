@@ -6,7 +6,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('chatid', help="channel id. defaults to kissy", nargs="?", type=int, default=551246526924455937)
 parser.add_argument("-q", "--quiet", action="store_true", dest="quiet", help="Run the script in quiet mode (no output)")
 #chatid = 551246526924455937 # kissy
-#chatid = 972938534661009519 # eekay
+chatid = 972938534661009519 # eekay
 if __name__ == '__main__':
     nargs = len(sys.argv) - 1
     assert nargs <= 2, f"expected 1 or 0 arguments. got {nargs}:\n{sys.argv}"
@@ -22,7 +22,7 @@ if __name__ == '__main__':
     else: assert 0, f"unrecognized host system: {system}"
 
     chatid = args.chatid
-    frig = Frig(keypath=keypath, configDir=configDir, chatid=chatid) # eekay
+    frig = Frig(keypath=keypath, configDir=configDir, chatid=chatid)
     '''
     while 1:
         try:

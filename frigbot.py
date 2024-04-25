@@ -10,12 +10,10 @@ class Frig:
         self.read_saved_state(configDir)
         
 
+        self.openai_client = openai.OpenAI(api_key = self.keys['openai'])
         self.client = zenon.Client(self.keys["discord"])
         
         self.lol = lolManager(self.keys["riot"], f"{self.configDir}/summonerIDs.json")
-
-
-        self.send("")
         
         self.trackedChannels = []
         self.addNewTrackedChannel("femboy fishing", "UCqq5t2vi_G753e19j6U-Ypg", "femboyFishing.json")
@@ -58,7 +56,6 @@ class Frig:
         self.rps_scores = loadjson(self.configDir, "rpsScores.json")
         self.lastfap =  dateload(self.configDir, "lastfap.txt")
         self.keys = loadjson(self.keypath)
-        openai.api_key = self.keys["openai"]
         self.botname = self.user_IDs["FriggBot2000"]
 
     def arcane_resp(self, msg):
@@ -77,7 +74,7 @@ class Frig:
         print(f"{bold}{gray}[GPT]: {endc}{yellow}text completion requested{endc}")
         try:
             prompt = msg['content'].replace("!gpt", "").strip()
-            completion = openai.ChatCompletion.create(model="gpt-4", messages=[{"role": "user", "content": prompt}])
+            completion = self.openai_client.chat.completions.create(model="gpt-4", messages=[{"role": "user", "content": prompt}])
             resp = completion.choices[0].message.content
             if len(resp) >= 2000:
                 nsplit = math.ceil(len(resp)/2000)
@@ -180,9 +177,9 @@ class Frig:
                 print(f"{bold}{gray}[FRIG]: {endc}{gray} issuing echo for '{e}'{endc}")
                 return self.echoes[e]
         gifs = []
-        if np.random.uniform() < reference_gif_prob:
+        if random.uniform(0, 1) < reference_gif_prob:
             if contains_scrambled(body, "itysl"): gifs.append(self.itysl_reference_resp())
-        if np.random.uniform() < reference_gif_prob / 10:
+        if random.uniform(0, 1) < reference_gif_prob / 10:
             if contains_scrambled(body, "arcane"): gifs.append(self.arcane_reference_resp())
         if len(gifs) > 0: return gifs
         return ""

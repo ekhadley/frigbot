@@ -1,7 +1,6 @@
-import datetime, random, math, json, requests, time, os, numpy as np
+import datetime, random, math, json, requests, time, os, openai
 from googleapiclient.discovery import build
 from Zenon.zenon import zenon
-import openai
 
 purple = '\033[95m'
 blue = '\033[94m'
@@ -30,10 +29,6 @@ def daterep(dat):
 
 def strptime(dstr): return datetime.datetime.strptime(dstr, "%Y-%b-%d (%H:%M:%S)")
 
-#def dateload(dir_, name):
-#    return strptime(loadtxt(dir_, name).readline().strip())
-
-#def loadtxt(*args):
 def dateload(*args):
     assert 0 < (nargs:=len(args)) and nargs < 3, f"{red}found {len(args)} args{endc}. Expected 2 args (dir, name) or 1 (path)"
     if len(args) == 1: path = args[0]
