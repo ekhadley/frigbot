@@ -177,6 +177,7 @@ class Frig:
                 return self.commands[command](msg)
             except Exception as e:
                 print(f"{bold}{gray}[FRIG]: {endc}{red} command '{command}' failed with exception:\n{e}{endc}")
+                return f"command '{command}' not recognized"
         else:
             return self.echo_resp(body)
 
