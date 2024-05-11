@@ -1,5 +1,4 @@
 import requests
-import threading #just in case
 from .messages.messages import Messages
 from .actions.reactions import Reaction
 from .actions.server import Server

@@ -3,7 +3,7 @@ from utils import *
 class Frig:
     def __init__(self, keypath, configDir, chatid):
         self.last_msg_id = 0 # unique message id. Used to check if a new message has been already seen
-        self.loop_delay = 0.3 # delay in seconds between checking for new mesages
+        self.loop_delay = 1.0 # delay in seconds between checking for new mesages
         self.chatid = chatid
         self.keypath = keypath
         self.configDir = configDir
@@ -164,9 +164,8 @@ class Frig:
                 print(f"{bold}{gray}[FRIG]: {endc}{yellow} command found: {command}{endc}")
                 #self.client.typing_action(self.chatid, msg)
                 return self.commands[command](msg)
-            except KeyError as e:
-                print(f"{bold}{gray}[FRIG]: {endc}{red} detected command '{command}' but type was unrecognized{endc}")
-            return f"command: '{command}' was not recognized"
+            except Exception as e:
+                print(f"{bold}{gray}[FRIG]: {endc}{red} command '{command}' failed with exception:\n{e}{endc}")
         else:
             return self.echo_resp(body)
 
@@ -257,9 +256,10 @@ class lolManager: # this handles requests to the riot api
         try:
             return self.summonerIDs[str(summonerName)]
         except KeyError:
-            print(f"{gray}{bold}[LOL]:{endc} {yellow}requested summonerID for new name:' {summonerName}'{endc}")
+            print(f"{gray}{bold}[LOL]:{endc} {yellow}requested summonerID for new name: '{summonerName}'{endc}")
             url = f"https://{region}.api.riotgames.com/lol/summoner/v4/summoners/by-name/{summonerName}?api_key={self.riotkey}"
             get = requests.get(url)
+            print(f"{blue+bold} getting summoner id for {summonerName}{endc}")
             if get.status_code == 200:
                 self.summonerIDs[str(summonerName)] = get.json()["id"]
                 print(f"{gray}{bold}[LOL]:{endc} {yellow}stored summonerID for new username: '{summonerName}'{endc}")
@@ -294,7 +294,7 @@ class lolManager: # this handles requests to the riot api
             return f"{name} is not on the ranked grind"
         try:
             info = info[0]
-            name = info["summonerName"]
+            #name = info["summonerName"]
             lp = info["leaguePoints"]
             wins = int(info["wins"])
             losses = int(info["losses"])
