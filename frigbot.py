@@ -22,7 +22,6 @@ class Frig:
         self.commands = {"!help":self.help_resp, # a dict of associations between commands (prefaced with a '!') and the functions they call to generate responses.
                          "!commands":self.help_resp,
                          "!cmds":self.help_resp,
-                         "!gpt4":self.gpt_resp,
                          "!gpt":self.gpt_resp,
                          "!arcane":self.arcane_resp,
                          "!faptime":self.faptime_resp,
@@ -35,7 +34,8 @@ class Frig:
                          "!physics":self.trackedChannels[1].forceCheckAndReport,
                          "!ttphysics":self.trackedChannels[1].ttcheck,
                          "!gif":self.random_gif_resp,
-                         "!lp":self.lp_resp}
+                         "!lp":self.lp_resp,
+                         "!dalle":self.dalle_resp}
 
         self.echo_resps = [ # the static repsonse messages for trigger words which I term "echo" responses
                 "This computer is shared with others including parents. This is a parent speaking to you to now. Not sure what this group is up to. I have told my son that role playing d and d games are absolutely forbidden in out household. We do not mind him having online friendships with local people that he knows for legitimate purposes. Perhaps this is an innocent group. But, we expect transparency in our son's friendships and acquaintances. If you would like to identify yourself now and let me know what your purpose for this platform is this is fine. You are welcome to do so.",
@@ -85,6 +85,17 @@ class Frig:
         except Exception as e:
             print(f"{bold}{gray}[GPT]: {endc}{red}text completion failed with exception:\n{e}{endc}")
             return "https://tenor.com/view/bkrafty-bkraftyerror-bafty-error-gif-25963379"
+    def dalle_resp(self, msg):
+        print(f"{bold}{gray}[DALLE]: {endc}{yellow}image generation requested{endc}")
+        try:
+            prompt = msg['content'].replace("!dalle", "").strip()
+            response = self.openai_client.images.generate(model="dall-e-3", prompt=prompt, size="1024x1024", quality="hd", n=1)
+            print(f"{bold}{gray}[DALLE]: {endc}{green}image generated {endc}")
+            return response.data[0].url
+        except Exception as e:
+            print(f"{bold}{gray}[DALLE]: {endc}{red}text completion failed with exception:\n{e}{endc}")
+            if isinstance(e, openai.error.InvalidRequestError):
+                return "no porn"
 
     def help_resp(self, msg):
         resp = f"commands:"
