@@ -95,7 +95,7 @@ class Frig:
         except Exception as e:
             print(f"{bold}{gray}[DALLE]: {endc}{red}text completion failed with exception:\n{e}{endc}")
             if isinstance(e, openai.error.InvalidRequestError):
-                return "no porn"
+                return "no porn!!!"
 
     def help_resp(self, msg):
         resp = f"commands:"
