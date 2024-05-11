@@ -94,7 +94,7 @@ class Frig:
             return response.data[0].url
         except Exception as e:
             print(f"{bold}{gray}[DALLE]: {endc}{red}text completion failed with exception:\n{e}{endc}")
-            if isinstance(e, openai.error.InvalidRequestError):
+            if e.code == 'content_policy_violation':
                 return "no porn!!!"
 
     def help_resp(self, msg):
