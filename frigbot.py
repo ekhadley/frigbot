@@ -35,6 +35,7 @@ class Frig:
                          "!ttphysics":self.trackedChannels[1].ttcheck,
                          "!gif":self.random_gif_resp,
                          "!lp":self.lp_resp,
+                         "!registeredsexoffenders":self.lol.list_known_summoners,
                          "!dalle":self.dalle_resp}
 
         self.echo_resps = [ # the static repsonse messages for trigger words which I term "echo" responses
@@ -319,6 +320,9 @@ class lolManager: # this handles requests to the riot api
             rep = f"{name} is {rankrep} with a {winrate:.3f} wr over {wins+losses} games"
             return rep
         except ValueError: print(info); return f"got ranked info:\n'{info}',\n but failed to parse. (spam @eekay)"
+
+    def list_known_summoners(self, *args, **kwargs):
+        return "".join([f"{k}\n" for k, v in self.summonerIDs.items()])
 
 class ytChannelTracker:
     def __init__(self, name, ytkey, channelID, savePath, checkInterval=10800):
