@@ -36,7 +36,8 @@ class Frig:
                          "!gif":self.random_gif_resp,
                          "!lp":self.lp_resp,
                          "!registeredsexoffenders":self.lol.list_known_summoners,
-                         "!dalle":self.dalle_resp}
+                         "!dalle":self.dalle_vivid_resp,
+                         "!dallen":self.dalle_natural_resp}
 
         self.echo_resps = [ # the static repsonse messages for trigger words which I term "echo" responses
                 "This computer is shared with others including parents. This is a parent speaking to you to now. Not sure what this group is up to. I have told my son that role playing d and d games are absolutely forbidden in out household. We do not mind him having online friendships with local people that he knows for legitimate purposes. Perhaps this is an innocent group. But, we expect transparency in our son's friendships and acquaintances. If you would like to identify yourself now and let me know what your purpose for this platform is this is fine. You are welcome to do so.",
@@ -86,17 +87,20 @@ class Frig:
         except Exception as e:
             print(f"{bold}{gray}[GPT]: {endc}{red}text completion failed with exception:\n{e}{endc}")
             return "https://tenor.com/view/bkrafty-bkraftyerror-bafty-error-gif-25963379"
-    def dalle_resp(self, msg):
+
+    def get_dalle3_link(self, msg, style='vivid', quality='standard'):
         print(f"{bold}{gray}[DALLE]: {endc}{yellow}image generation requested{endc}")
         try:
             prompt = msg['content'].replace("!dalle", "").strip()
-            response = self.openai_client.images.generate(model="dall-e-3", prompt=prompt, size="1024x1024", quality="hd", n=1)
+            response = self.openai_client.images.generate(model="dall-e-3", prompt=prompt, size="1024x1024", quality=quality, n=1, style=style)
             print(f"{bold}{gray}[DALLE]: {endc}{green}image generated {endc}")
             return response.data[0].url
         except Exception as e:
             print(f"{bold}{gray}[DALLE]: {endc}{red}text completion failed with exception:\n{e}{endc}")
             if e.code == 'content_policy_violation':
                 return "no porn!!!"
+    def dalle_vivid_resp(self, msg): return self.get_dalle3_link(msg, style='vivid')
+    def dalle_natural_resp(self, msg): return self.get_dalle3_link(msg, style='natural')
 
     def help_resp(self, msg):
         resp = f"commands:"
