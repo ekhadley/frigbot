@@ -264,6 +264,7 @@ class lolManager: # this handles requests to the riot api
         self.savePath = savePath
         self.riotkey = riotkey
         self.summonerIDs = loadjson(savePath)
+        #self.match_history('eekay')
 
     def load_player_ids(self):
         with open(self.savePath, 'r') as f:
@@ -299,12 +300,37 @@ class lolManager: # this handles requests to the riot api
             print(f"{gray}{bold}[LOL]: {endc}{green}ranked info acquired for '{summonerName}'{endc}")
             return report
         elif get.status_code == 403:
-            print(f"{gray}{bold}[LOL]: {endc}{red}got 403 for name '{summonerName}'. key is probably expired. request url:\n{url}{endc}")
+            print(f"{gray}{bold}[LOL]: {endc}{red}got 403 for name '{summonerName}'. key is probably expired. {endc}")
+            return f"got 403 for name '{summonerName}'. key is probably expired. blame riot request url:\n{url}"
+        else:
+            print(f"{gray}{bold}[LOL]: {endc}{red}attempted ID for '{summonerName}' got: {get}. request url:\n{url}'{endc}")
+            return "https://tenor.com/view/snoop-dog-who-what-gif-14541222"
+
+    #ugh:
+    # https://developer.riotgames.com/apis#summoner-v4/GET_getBySummonerId to get the puuid
+    # https://developer.riotgames.com/apis#match-v5/GET_getMatchIdsByPUUID to get the id of whatever games
+    # https://developer.riotgames.com/apis#match-v5/GET_getMatch to get info about the game from the id
+    def match_history(self, summonerName, region=None):
+        region = "americas" if region is None else region
+        summonerID = self.get_summoner_id(summonerName, region)
+        url = f"https://{region}.api.riotgames.com/lol/match/v5/matches/NA1_5004846015?api_key={self.riotkey}"
+        print(bold, purple, url, endc)
+        get = requests.get(url)
+        
+        with open('data.json', 'w', encoding='utf-8') as f:
+            json.dump(get.json(), f, ensure_ascii=False, indent=4)
+        
+        if get.status_code == 200:
+            print(f"{gray}{bold}[LOL]: {endc}{green}ranked info acquired for '{summonerName}'{endc}")
+            print(get.json())
+        elif get.status_code == 403:
+            print(f"{gray}{bold}[LOL]: {endc}{red}got 403 for name '{summonerName}'. key is probably expired. {endc}")
             return f"got 403 for name '{summonerName}'. key is probably expired. blame riot"
         else:
             print(f"{gray}{bold}[LOL]: {endc}{red}attempted ID for '{summonerName}' got: {get}. request url:\n{url}'{endc}")
             return "https://tenor.com/view/snoop-dog-who-what-gif-14541222"
-    
+
+
     def parse_ranked_info(self, info, name):
         if info == []:
             if "dragondude" in name.lower(): return "ap is still a bitch (not on the ranked grind)"
