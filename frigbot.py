@@ -35,6 +35,7 @@ class Frig:
                          "!ttphysics":self.trackedChannels[1].ttcheck,
                          "!gif":self.random_gif_resp,
                          "!lp":self.lp_resp,
+                         "!piggies":self.group_lp_resp,
                          "!registeredsexoffenders":self.lol.list_known_summoners,
                          "!dalle":self.dalle_vivid_resp,
                          "!dallen":self.dalle_natural_resp}
@@ -132,8 +133,39 @@ class Frig:
         return [report, update]
 
     def lp_resp(self, msg):
-        summ = msg["content"].replace("!lp", "").strip()
-        return self.lol.ranked_info(summ)
+        name = msg["content"].replace("!lp", "").strip()
+        info = self.lol.get_ranked_info(name)
+        
+        if info == []:
+            if "dragondude" in name.lower(): return "ap is still a bitch (not on the ranked grind)"
+            return f"{name} is not on the ranked grind"
+        try:
+            info = info[0]
+            #name = info["summonerName"]
+            lp = info["leaguePoints"]
+            wins = int(info["wins"])
+            losses = int(info["losses"])
+            winrate = wins/(wins+losses)
+
+            tier = info["tier"].lower().capitalize()
+            div = info["rank"]
+            rankrep = f"in {tier} {div} at {lp} lp"
+
+            rep = f"{name} is {rankrep} with a {winrate:.3f} wr over {wins+losses} games"
+            return rep
+        
+        except ValueError:
+            print(info)
+            return f"got ranked info:\n'{info}',\n but failed to parse. (spam @eekay)"
+
+    def group_lp_resp(self, msg):
+        piggies = ["eekay", "xylotile", "dragondude", "maestrofluff"]
+        tierOrder = {'IRON':0, 'BRONZE':1, 'SILVER':2, 'GOLD':3, 'PLATINUM':4, 'EMERALD':4, 'DIAMOND':6, 'MASTER':7, 'GRANDMASTER':8, 'CHALLENGER':9}
+        rankOrder = {'IV':4, 'IIV':3, 'II':2, "I":1}
+        infos = [self.lol.get_ranked_info(pig)[0] for pig in piggies] # broken when somebody not on the ranked grind
+        infos.sort(key = lambda x: tierOrder[x['tier']]*1000 + x['rank']*100 + x['leaguePoints'])
+        return [x['wins'] + x['losses'] for x in infos]
+
 
     def send(self, msg): # sends a string or list of strings as a message/messages in the chat
         if isinstance(msg, list):
@@ -232,29 +264,6 @@ class Frig:
         query = msg['content'].replace("!gif", "").strip()
         return self.randomgif(query, num)
 
-    def faptime(self):
-        delta = datetime.datetime.now() - self.lastfap
-        days, hours, minutes, seconds = delta.days, delta.seconds//3600, (delta.seconds%3600)//60, delta.seconds%60
-        return days, hours, minutes, seconds
-    def faptime_resp(self, msg):
-        days, hours, minutes, seconds = self.faptime()
-        return f"Xylotile has not nutted in {days} days, {hours} hours, {minutes} minutes, and {seconds} seconds. stay strong."
-    def lastfap_resp(self, msg):
-        return f"Xylotile's last nut was on {self.lastfap.strftime('%B %d %Y at %I:%M%p')}"
-    def fapfail_resp(self, msg):
-        authorid = msg["author"]["id"]
-        try:
-            if int(authorid) != int(self.user_IDs["Xylotile"]): return f"You are not authorized to make Xylotile nut."
-            else:
-                days, hours, minutes, seconds = self.faptime()
-                self.set_last_fap()
-                return ["https://tenor.com/view/ambatukam-ambasing-ambadeblow-gif-25400729", f"Xylotile has just lost their nofap streak of {days} days, {hours} hours, {minutes} minutes, and {seconds} seconds."]
-        except KeyError:
-            print(bold, red, f"Xylotile's userID could not be found, so the fapstreak update could not be verified. thats not good! spam @eekay")
-    def set_last_fap(self):
-        datesave(datetime.datetime.now(), f"{self.configDir}/lastfap.txt")
-        self.lastfap = self.load_lastfap()
-
     def wait(self):
         time.sleep(self.loop_delay)
 
@@ -290,15 +299,14 @@ class lolManager: # this handles requests to the riot api
         with open(self.savePath, "w") as f:
             f.write(json.dumps(self.summonerIDs, indent=4))
 
-    def ranked_info(self, summonerName, region=None):
+    def get_ranked_info(self, summonerName, region=None):
         region = "na1" if region is None else region
         summonerID = self.get_summoner_id(summonerName, region)
         url = f"https://{region}.api.riotgames.com/lol/league/v4/entries/by-summoner/{summonerID}?api_key={self.riotkey}"
         get = requests.get(url)
         if get.status_code == 200:
-            report = self.parse_ranked_info(get.json(), summonerName)
             print(f"{gray}{bold}[LOL]: {endc}{green}ranked info acquired for '{summonerName}'{endc}")
-            return report
+            return get.json(parse_float=float, parse_int=int)
         elif get.status_code == 403:
             print(f"{gray}{bold}[LOL]: {endc}{red}got 403 for name '{summonerName}'. key is probably expired. {endc}")
             return f"got 403 for name '{summonerName}'. key is probably expired. blame riot request url:\n{url}"
@@ -307,9 +315,9 @@ class lolManager: # this handles requests to the riot api
             return "https://tenor.com/view/snoop-dog-who-what-gif-14541222"
 
     #ugh:
-    # https://developer.riotgames.com/apis#summoner-v4/GET_getBySummonerId to get the puuid
-    # https://developer.riotgames.com/apis#match-v5/GET_getMatchIdsByPUUID to get the id of whatever games
-    # https://developer.riotgames.com/apis#match-v5/GET_getMatch to get info about the game from the id
+    # https://developer.riotgames.com/apis#summoner-v4/GET_getBySummonerId to get the puuid from the encrypted summoner id (which is whats stored by frig)
+    # https://developer.riotgames.com/apis#match-v5/GET_getMatchIdsByPUUID to get the match ids of whatever games from the summoner's puuid
+    # https://developer.riotgames.com/apis#match-v5/GET_getMatch to get info about the game from the id from the match id
     def match_history(self, summonerName, region=None):
         region = "americas" if region is None else region
         summonerID = self.get_summoner_id(summonerName, region)
@@ -330,26 +338,6 @@ class lolManager: # this handles requests to the riot api
             print(f"{gray}{bold}[LOL]: {endc}{red}attempted ID for '{summonerName}' got: {get}. request url:\n{url}'{endc}")
             return "https://tenor.com/view/snoop-dog-who-what-gif-14541222"
 
-
-    def parse_ranked_info(self, info, name):
-        if info == []:
-            if "dragondude" in name.lower(): return "ap is still a bitch (not on the ranked grind)"
-            return f"{name} is not on the ranked grind"
-        try:
-            info = info[0]
-            #name = info["summonerName"]
-            lp = info["leaguePoints"]
-            wins = int(info["wins"])
-            losses = int(info["losses"])
-            winrate = wins/(wins+losses)
-
-            tier = info["tier"].lower().capitalize()
-            div = info["rank"]
-            rankrep = f"in {tier} {div} at {lp} lp"
-
-            rep = f"{name} is {rankrep} with a {winrate:.3f} wr over {wins+losses} games"
-            return rep
-        except ValueError: print(info); return f"got ranked info:\n'{info}',\n but failed to parse. (spam @eekay)"
 
     def list_known_summoners(self, *args, **kwargs):
         return "".join([f"{k}\n" for k, v in self.summonerIDs.items()])
