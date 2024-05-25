@@ -15,6 +15,8 @@ class Frig:
         
         self.lol = lolManager(self.keys["riot"], f"{self.configDir}/summonerIDs.json")
         
+        #self.group_lp_resp()
+        
         self.trackedChannels = []
         self.addNewTrackedChannel("femboy fishing", "UCqq5t2vi_G753e19j6U-Ypg", "femboyFishing.json")
         self.addNewTrackedChannel("femboy physics", "UCTE3WPc1oFdNYT8SnZCQW5w", "femboyPhysics.json")
@@ -24,10 +26,6 @@ class Frig:
                          "!cmds":self.help_resp,
                          "!gpt":self.gpt_resp,
                          "!arcane":self.arcane_resp,
-                         "!faptime":self.faptime_resp,
-                         "!lastfap":self.lastfap_resp,
-                         "!fapfail":self.fapfail_resp,
-                         "!lostfap":self.fapfail_resp,
                          "!rps":self.rps_resp,
                          "!fish":self.trackedChannels[0].forceCheckAndReport,
                          "!ttfish":self.trackedChannels[0].ttcheck,
@@ -57,7 +55,6 @@ class Frig:
     def read_saved_state(self, dirname):
         self.user_IDs = loadjson(self.configDir, "userIDs.json")
         self.rps_scores = loadjson(self.configDir, "rpsScores.json")
-        self.lastfap =  dateload(self.configDir, "lastfap.txt")
         self.keys = loadjson(self.keypath)
         self.botname = self.user_IDs["FriggBot2000"]
 
@@ -158,14 +155,30 @@ class Frig:
             print(info)
             return f"got ranked info:\n'{info}',\n but failed to parse. (spam @eekay)"
 
-    def group_lp_resp(self, msg):
-        piggies = ["eekay", "xylotile", "dragondude", "maestrofluff"]
-        tierOrder = {'IRON':0, 'BRONZE':1, 'SILVER':2, 'GOLD':3, 'PLATINUM':4, 'EMERALD':4, 'DIAMOND':6, 'MASTER':7, 'GRANDMASTER':8, 'CHALLENGER':9}
-        rankOrder = {'IV':4, 'IIV':3, 'II':2, "I":1}
-        infos = [self.lol.get_ranked_info(pig)[0] for pig in piggies] # broken when somebody not on the ranked grind
-        infos.sort(key = lambda x: tierOrder[x['tier']]*1000 + x['rank']*100 + x['leaguePoints'])
-        return [x['wins'] + x['losses'] for x in infos]
+    def group_lp_resp(self, *args, **kwargs):
+        sumnames = ["eekay", "xylotile", "dragondude", "maestrofluff"]
+        rev = {v:k for k, v in self.lol.summonerIDs.items()}
+        tierOrder = {'IRON':0, 'BRONZE':1, 'SILVER':2, 'GOLD':3, 'PLATINUM':4, 'EMERALD':5, 'DIAMOND':6, 'MASTER':7, 'GRANDMASTER':8, 'CHALLENGER':9}
+        rankColors = {'IRON':agray, 'BRONZE':ared, 'SILVER':awhite, 'GOLD':ayellow, 'PLATINUM':acyan, 'EMERALD':alime, 'DIAMOND':ablue, 'MASTER':red, 'GRANDMASTER':apink, 'CHALLENGER':apurple}
+        rankOrder = {'IV':0, 'III':1, 'II':2, "I":3}
 
+        infos = [self.lol.get_ranked_info(name) for name in sumnames]
+        infos = [x[0] for x in infos if x != []]
+        infos.sort(key = lambda x: tierOrder[x['tier']]*1000 + rankOrder[x['rank']]*100 + x['leaguePoints'], reverse=True)
+
+        names = [f"{abold}{rev[info['summonerId']]}{aendc}" for info in infos]
+        ranks = [f"{rankColors[info['tier']]}{info['tier'].lower().capitalize()} {info['rank']}{aendc} " for info in infos]
+        winrates = [f"[{info['wins']/(info['wins'] + info['losses']):.3f} over {info['wins']+info['losses']} games]\n" for info in infos]
+
+        namepad = max([len(name) for name in sumnames]) + 2
+        rankpad = max([len(info['tier']+info['rank']) for info in infos])
+
+        resp = "```ansi\n"
+        for i, info in enumerate(infos):
+            resp += names[i] + " "*(namepad-len(rev[info['summonerId']])) + ranks[i] + " "*(rankpad-len(info['tier']+info['rank'])) + f"{info['leaguePoints']} LP " + winrates[i]
+            #resp +=  name + " "*(pad-len(name)) + f"{info['tier'].lower().capitalize()} {info['rank']} {info['leaguePoints']} LP. {info['wins']/(info['wins'] + info['losses']):.3f} over {info['wins']+info['losses']} games\n"
+        resp += "```"
+        return resp
 
     def send(self, msg): # sends a string or list of strings as a message/messages in the chat
         if isinstance(msg, list):
