@@ -86,7 +86,7 @@ class Frig:
             print(f"{bold}{gray}[GPT]: {endc}{red}text completion failed with exception:\n{e}{endc}")
             return "https://tenor.com/view/bkrafty-bkraftyerror-bafty-error-gif-25963379"
 
-    def get_dalle3_link(self, msg, style='vivid', quality='standard'):
+    def get_dalle3_link(self, msg, style='vivid', quality='hd'):
         print(f"{bold}{gray}[DALLE]: {endc}{yellow}image generation requested{endc}")
         try:
             prompt = msg['content'].replace("!dalle", "").strip()
