@@ -74,7 +74,7 @@ class Frig:
         print(f"{bold}{gray}[GPT]: {endc}{yellow}text completion requested{endc}")
         try:
             prompt = msg['content'].replace("!gpt", "").strip()
-            completion = self.openai_client.chat.completions.create(model="gpt-4", messages=[{"role": "user", "content": prompt}])
+            completion = self.openai_client.chat.completions.create(model="gpt-4o", messages=[{"role": "user", "content": prompt}])
             resp = completion.choices[0].message.content
             if len(resp) >= 2000:
                 nsplit = math.ceil(len(resp)/2000)
