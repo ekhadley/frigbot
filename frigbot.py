@@ -94,7 +94,7 @@ class Frig:
                 model="claude-3-5-sonnet-20240620",
                 max_tokens=2000,
                 temperature=0,
-                system="You are a helpful and intelligent assistant who rarely responds with tangential comments about the game Cyberpunk 2077.",
+                system="You are a helpful and intelligent assistant.",
                 messages=[
                     {
                         "role": "user",
