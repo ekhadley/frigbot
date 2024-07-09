@@ -107,7 +107,7 @@ class Frig:
                     }
                 ]
             )
-            resp = completion.content[0].text
+            resp = completion.content[0].text.replace("\n\n", "\n")
             if len(resp) >= 2000:
                 nsplit = math.ceil(len(resp)/2000)
                 interval = len(resp)//nsplit
