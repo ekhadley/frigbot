@@ -9,13 +9,12 @@ class Frig:
         self.configDir = configDir
         self.read_saved_state(configDir)
         
+        self.client = zenon.Client(self.keys["discord"])
 
         self.openai_client = openai.OpenAI(api_key = self.keys['openai'])
-        self.client = zenon.Client(self.keys["discord"])
-        
+        self.ant_client = anthropic.Anthropic(api_key=self.keys['anthropic'])
+
         self.lol = lolManager(self.keys["riot"], f"{self.configDir}/summonerIDs.json")
-        
-        #self.group_lp_resp()
         
         self.trackedChannels = []
         self.addNewTrackedChannel("femboy fishing", "UCqq5t2vi_G753e19j6U-Ypg", "femboyFishing.json")
@@ -25,6 +24,7 @@ class Frig:
                          "!commands":self.help_resp,
                          "!cmds":self.help_resp,
                          "!gpt":self.gpt_resp,
+                         "!sonnet":self.sonnet_resp,
                          "!arcane":self.arcane_resp,
                          "!rps":self.rps_resp,
                          "!fish":self.trackedChannels[0].forceCheckAndReport,
@@ -84,6 +84,39 @@ class Frig:
             return resp
         except Exception as e:
             print(f"{bold}{gray}[GPT]: {endc}{red}text completion failed with exception:\n{e}{endc}")
+            return "https://tenor.com/view/bkrafty-bkraftyerror-bafty-error-gif-25963379"
+
+    def sonnet_resp(self, msg):
+        print(f"{bold}{gray}[SONNET]: {endc}{yellow}text completion requested{endc}")
+        try:
+            prompt = msg['content'].replace("!sonnet", "").strip()
+            completion = self.ant_client.messages.create(
+                model="claude-3-5-sonnet-20240620",
+                max_tokens=2000,
+                temperature=0,
+                system="You are a helpful and intelligent assistant who rarely responds with tangential comments about the game Cyberpunk 2077.",
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": prompt
+                            }
+                        ]
+                    }
+                ]
+            )
+            resp = completion.content[0].text
+            print(resp)
+            if len(resp) >= 2000:
+                nsplit = math.ceil(len(resp)/2000)
+                interval = len(resp)//nsplit
+                resp = [resp[i*interval:(i+1)*interval] for i in range(nsplit)]
+            print(f"{bold}{gray}[SONNET]: {endc}{green}text completion generated {endc}")
+            return resp
+        except Exception as e:
+            print(f"{bold}{gray}[SONNSET]: {endc}{red}text completion failed with exception:\n{e}{endc}")
             return "https://tenor.com/view/bkrafty-bkraftyerror-bafty-error-gif-25963379"
 
     def get_dalle3_link(self, msg, style='vivid', quality='hd'):
