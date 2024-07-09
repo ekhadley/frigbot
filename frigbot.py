@@ -108,7 +108,6 @@ class Frig:
                 ]
             )
             resp = completion.content[0].text
-            print(resp)
             if len(resp) >= 2000:
                 nsplit = math.ceil(len(resp)/2000)
                 interval = len(resp)//nsplit
