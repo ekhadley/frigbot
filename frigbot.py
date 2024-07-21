@@ -51,6 +51,7 @@ class Frig:
                        "tetus":self.echo_resps[1],
                        "juckyard":self.echo_resps[1]
                        }
+        
 
     def read_saved_state(self, dirname):
         self.user_IDs = loadjson(self.configDir, "userIDs.json")
@@ -229,6 +230,9 @@ class Frig:
     def get_self_msg(self): # determines what the bot needs to send at any given instance based on new messages and timed messages
         msg = self.get_last_msg()
         if msg["id"] != self.last_msg_id and msg["author"]["id"] != self.botname:
+            print("lkjnbsdfvnkljsdfnjklvfsdnjkl")
+            if msg['author']['id'] == self.user_IDs["ASlowFatHorsey"]: 
+                self.client.addReaction(self.chatid, msg['id'], '\U0001F416')
             try:
                 author = self.user_IDs[msg["author"]["global_name"]]
             except KeyError:

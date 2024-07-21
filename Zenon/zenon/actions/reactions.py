@@ -6,6 +6,7 @@ class Reaction(object):
         self.discord = discord
     
     def addReaction(self, chatid, msgid, reactionid, proxy):
+        print(requests.put(self.discord  + "channels/" + str(chatid) + "/messages/" + str(msgid) + "/reactions/" + str(reactionid) + "/@me", proxies=proxy, headers={"Authorization":self.token}).text)
         return requests.put(self.discord  + "channels/" + str(chatid) + "/messages/" + str(msgid) + "/reactions/" + str(reactionid) + "/@me", proxies=proxy, headers={"Authorization":self.token}).text
         
     def removeReaction(self, chatid, msgid, reactionid, proxy):
