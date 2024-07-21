@@ -60,11 +60,11 @@ class Frig:
         if msg['author']['id'] == self.user_IDs["eekay"]:
             if msg['author']['id']:
                 if cmd == 'on':
-                    return 'Pigwatch enabled'
                     self.pigwatch = True
+                    return 'Pigwatch enabled'
                 if cmd == 'off':
-                    return 'Pigwatch disabled'
                     self.pigwatch = False
+                    return 'Pigwatch disabled'
                 if len(cmd) == 0:
                     return f"Please provide a command."
                 else:
