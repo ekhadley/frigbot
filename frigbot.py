@@ -53,7 +53,7 @@ class Frig:
                        "juckyard":self.echo_resps[1]
                        }
         
-        self.pigwatch = False
+        self.pigwatch = True
     
     def pigwatch_resp(self, msg):
         cmd = msg['content'].replace('!pigwatch', "").strip().lower()
