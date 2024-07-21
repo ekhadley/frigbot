@@ -36,7 +36,8 @@ class Frig:
                          "!piggies":self.group_lp_resp,
                          "!registeredsexoffenders":self.lol.list_known_summoners,
                          "!dalle":self.dalle_vivid_resp,
-                         "!dallen":self.dalle_natural_resp}
+                         "!dallen":self.dalle_natural_resp,
+                         "!pigwatch":self.pigwatch_resp}
 
         self.echo_resps = [ # the static repsonse messages for trigger words which I term "echo" responses
                 "This computer is shared with others including parents. This is a parent speaking to you to now. Not sure what this group is up to. I have told my son that role playing d and d games are absolutely forbidden in out household. We do not mind him having online friendships with local people that he knows for legitimate purposes. Perhaps this is an innocent group. But, we expect transparency in our son's friendships and acquaintances. If you would like to identify yourself now and let me know what your purpose for this platform is this is fine. You are welcome to do so.",
@@ -52,6 +53,25 @@ class Frig:
                        "juckyard":self.echo_resps[1]
                        }
         
+        self.pigwatch = False
+    
+    def pigwatch_resp(self, msg):
+        cmd = msg['content'].replace('!pigwatch', "").strip().lower()
+        if msg['author']['id'] == self.user_IDs["eekay"]:
+            if msg['author']['id']:
+                if cmd == 'on':
+                    return 'Pigwatch enabled'
+                    self.pigwatch = True
+                if cmd == 'off':
+                    return 'Pigwatch disabled'
+                    self.pigwatch = False
+                if len(cmd) == 0:
+                    return f"Please provide a command."
+                else:
+                    return f"Pigwatch command '{cmd} unrecognized."
+        else:
+            return ["Accessing camera. . .", "Performing retinal scan. . .", "Scan failed. You are not eekay.", "Nice try Piggy."]
+
 
     def read_saved_state(self, dirname):
         self.user_IDs = loadjson(self.configDir, "userIDs.json")
@@ -229,19 +249,19 @@ class Frig:
     
     def get_self_msg(self): # determines what the bot needs to send at any given instance based on new messages and timed messages
         msg = self.get_last_msg()
-        if msg["id"] != self.last_msg_id and msg["author"]["id"] != self.botname:
-            print("lkjnbsdfvnkljsdfnjklvfsdnjkl")
-            if msg['author']['id'] == self.user_IDs["ASlowFatHorsey"]: 
-                self.client.addReaction(self.chatid, msg['id'], '\U0001F416')
+        msg_id, msg_author_id = msg["id"], msg["author"]["id"] 
+        if msg_id != self.last_msg_id and msg_author_id != self.botname:
+            if self.pigwatch and msg_author_id == self.user_IDs["ASlowFatHorsey"]: 
+                self.client.addReaction(self.chatid, msg_id, '\U0001F416')
             try:
                 author = self.user_IDs[msg["author"]["global_name"]]
             except KeyError:
                 print(f"{bold}{gray}[FRIG]: {endc}{yellow}new username '{msg['author']['global_name']}' detected. storing their ID. {endc}")
-                self.user_IDs[msg["author"]["global_name"]] = msg["author"]["id"]
+                self.user_IDs[msg["author"]["global_name"]] = msg_author_id
                 with open(f"{self.configDir}/userIDs.json", "w") as f:
                     f.write(json.dumps(self.user_IDs, indent=4))
             
-            self.last_msg_id = msg["id"]
+            self.last_msg_id = msg_id
             return self.get_response_to_new_msg(msg)
         return self.get_timed_messages()
 
