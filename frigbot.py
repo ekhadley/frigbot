@@ -92,6 +92,7 @@ class Frig:
         return self.randomgif(query, num)
 
     def gpt_resp(self, msg):
+        self.send('. . .')
         print(f"{bold}{gray}[GPT]: {endc}{yellow}text completion requested{endc}")
         try:
             prompt = msg['content'].replace("!gpt", "").strip()
@@ -108,6 +109,7 @@ class Frig:
             return "https://tenor.com/view/bkrafty-bkraftyerror-bafty-error-gif-25963379"
 
     def sonnet_resp(self, msg):
+        self.send('. . .')
         print(f"{bold}{gray}[SONNET]: {endc}{yellow}text completion requested{endc}")
         try:
             prompt = msg['content'].replace("!sonnet", "").strip()
@@ -141,6 +143,7 @@ class Frig:
 
     def get_dalle3_link(self, msg, style='vivid', quality='hd'):
         print(f"{bold}{gray}[DALLE]: {endc}{yellow}image generation requested{endc}")
+        self.send('. . .')
         try:
             prompt = msg['content'].replace("!dalle", "").strip()
             response = self.openai_client.images.generate(model="dall-e-3", prompt=prompt, size="1024x1024", quality=quality, n=1, style=style)
