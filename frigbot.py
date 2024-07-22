@@ -212,7 +212,7 @@ class Frig:
             return f"got ranked info:\n'{info}',\n but failed to parse. (spam @eekay)"
 
     def group_lp_resp(self, *args, **kwargs):
-        sumnames = ["eekay", "xylotile", "dragondude", "maestrofluff"]
+        sumnames = ["eekay", "xylotile", "dragondude", "maestrofluff", "smolyoshi"]
         rev = {v:k for k, v in self.lol.summonerIDs.items()}
         tierOrder = {'IRON':0, 'BRONZE':1, 'SILVER':2, 'GOLD':3, 'PLATINUM':4, 'EMERALD':5, 'DIAMOND':6, 'MASTER':7, 'GRANDMASTER':8, 'CHALLENGER':9}
         rankColors = {'IRON':agray, 'BRONZE':ared, 'SILVER':awhite, 'GOLD':ayellow, 'PLATINUM':acyan, 'EMERALD':alime, 'DIAMOND':ablue, 'MASTER':red, 'GRANDMASTER':apink, 'CHALLENGER':apurple}
