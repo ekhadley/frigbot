@@ -186,7 +186,7 @@ class Frig:
         return [report, update]
 
     def lp_resp(self, msg):
-        name = msg["content"].replace("!lp", "").strip()
+        name = msg["content"].replace("!lp", "").strip().lower()
         info = self.lol.get_ranked_info(name)
         if isinstance(info, str): return info
         
@@ -347,8 +347,6 @@ class lolManager: # this handles requests to the riot api
         self.riotkey = riotkey
         self.summonerIDs = loadjson(savePath)
         #self.match_history('eekay')
-        self.summonerIDs = {k.lower():v for k, v in self.summonerIDs.items()}
-        self.store_player_ids()
 
     def load_player_ids(self):
         with open(self.savePath, 'r') as f:
