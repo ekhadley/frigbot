@@ -37,7 +37,7 @@ class Frig:
                          "!registeredsexoffenders":self.lol.list_known_summoners,
                          "!dalle":self.dalle_vivid_resp,
                          "!dallen":self.dalle_natural_resp,
-                         "!pigwatch":self.pigwatch_resp,
+                         #"!pigwatch":self.pigwatch_resp,
                          "!coin": self.coinflip_resp,
                          "!coinflip": self.coinflip_resp}
 
