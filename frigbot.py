@@ -37,7 +37,9 @@ class Frig:
                          "!registeredsexoffenders":self.lol.list_known_summoners,
                          "!dalle":self.dalle_vivid_resp,
                          "!dallen":self.dalle_natural_resp,
-                         "!pigwatch":self.pigwatch_resp}
+                         "!pigwatch":self.pigwatch_resp,
+                         "!coin": self.coinflip_resp,
+                         "!coinflip": self.coinflip_resp}
 
         self.echo_resps = [ # the static repsonse messages for trigger words which I term "echo" responses
                 "This computer is shared with others including parents. This is a parent speaking to you to now. Not sure what this group is up to. I have told my son that role playing d and d games are absolutely forbidden in out household. We do not mind him having online friendships with local people that he knows for legitimate purposes. Perhaps this is an innocent group. But, we expect transparency in our son's friendships and acquaintances. If you would like to identify yourself now and let me know what your purpose for this platform is this is fine. You are welcome to do so.",
@@ -72,6 +74,8 @@ class Frig:
         else:
             return ["Accessing camera. . .", "Performing retinal scan. . .", "Scan failed. You are not eekay.", "Nice try Piggy."]
 
+    def coinflip_resp(self, *args, **kwargs):
+        return random.choice(['heads', 'tails'])
 
     def read_saved_state(self, dirname):
         self.user_IDs = loadjson(self.configDir, "userIDs.json")
