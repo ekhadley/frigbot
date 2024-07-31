@@ -39,7 +39,9 @@ class Frig:
                          "!dallen":self.dalle_natural_resp,
                          #"!pigwatch":self.pigwatch_resp,
                          "!coin": self.coinflip_resp,
-                         "!coinflip": self.coinflip_resp}
+                         "!coinflip": self.coinflip_resp,
+                         "!bayes": self.bayesian_resp,
+                         }
 
         self.echo_resps = [ # the static repsonse messages for trigger words which I term "echo" responses
                 "This computer is shared with others including parents. This is a parent speaking to you to now. Not sure what this group is up to. I have told my son that role playing d and d games are absolutely forbidden in out household. We do not mind him having online friendships with local people that he knows for legitimate purposes. Perhaps this is an innocent group. But, we expect transparency in our son's friendships and acquaintances. If you would like to identify yourself now and let me know what your purpose for this platform is this is fine. You are welcome to do so.",
@@ -119,7 +121,7 @@ class Frig:
             prompt = msg['content'].replace("!sonnet", "").strip()
             completion = self.ant_client.messages.create(
                 model="claude-3-5-sonnet-20240620",
-                max_tokens=2000,
+                max_tokens=1000,
                 temperature=0,
                 system="You are a helpful and intelligent assistant.",
                 messages=[
@@ -143,6 +145,36 @@ class Frig:
             return resp
         except Exception as e:
             print(f"{bold}{gray}[SONNSET]: {endc}{red}text completion failed with exception:\n{e}{endc}")
+            return "https://tenor.com/view/bkrafty-bkraftyerror-bafty-error-gif-25963379"
+
+    def bayesian_resp(self, msg):
+        self.send('. . .')
+        print(f"{bold}{gray}[SONNET]: {endc}{yellow}Bayesian analysis requested{endc}")
+        try:
+            prompt = msg['content'].replace("!sonnet", "").strip()
+            bayesian_system_prompt = """You are a helpful assistant specializing in Bayesian analysis and reasoning.\nWhen presented with a question or problem, your task is to:\n1. Interpret the question as a problem that can be solved using Bayesian reasoning.\n2. Explain how Bayes' theorem applies to this situation.\n3. Guide the user through the process of applying Bayesian analysis to their problem.\n4. If specific probabilities aren't provided, suggest reasonable estimates and explain why they're chosen.\n5. Show the step-by-step application of Bayes' theorem to solve the problem.\n6. Interpret the results in the context of the original question.\n\nRemember, Bayes' theorem is: P(A|B) = (P(B|A) * P(A)) / P(B)\nWhere:\n- P(A|B) is the posterior probability\n- P(B|A) is the likelihood\n- P(A) is the prior probability\n- P(B) is the marginal likelihood\n\nAlways strive to make your explanation clear and accessible, even to those who might not be familiar with Bayesian statistics."""
+            completion = self.ant_client.messages.create(
+                model="claude-3-5-sonnet-20240620",
+                max_tokens=1000,
+                temperature=0,
+                system=bayesian_system_prompt,
+                messages=[{
+                    "role": "user",
+                    "content": [{
+                        "type": "text",
+                        "text": f"Please apply Bayesian reasoning to answer the following question or solve the following problem: {prompt}"
+                        }
+                    ]}
+                ]
+            )
+            resp = completion.content[0].text.replace("\n\n", "\n")
+            if len(resp) >= 2000:
+                nsplit = math.ceil(len(resp)/2000)
+                interval = len(resp)//nsplit
+                resp = [resp[i*interval:(i+1)*interval] for i in range(nsplit)]
+            return resp
+        except Exception as e:
+            print(f"{bold}{gray}[SONNET]: {endc}{red}Bayesian analysis failed with exception:\n{e}{endc}")
             return "https://tenor.com/view/bkrafty-bkraftyerror-bafty-error-gif-25963379"
 
     def get_dalle3_link(self, msg, style='vivid', quality='hd'):
