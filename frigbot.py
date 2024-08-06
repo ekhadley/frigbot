@@ -103,7 +103,7 @@ class Frig:
         try:
             prompt = msg['content'].replace("!gpt", "").strip()
             completion = self.openai_client.chat.completions.create(model="gpt-4o", messages=[{"role": "user", "content": prompt}])
-            resp = completion.choices[0].message.content
+            resp = completion.choices[0].message.content.replace("\n\n", "\n")
             if len(resp) >= 2000:
                 nsplit = math.ceil(len(resp)/2000)
                 interval = len(resp)//nsplit
