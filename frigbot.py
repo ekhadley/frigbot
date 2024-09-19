@@ -26,6 +26,7 @@ class Frig:
                          "!gpt":self.gpt_resp,
                          "!sonnet":self.sonnet_resp,
                          "!arcane":self.arcane_resp,
+                         "!dune":self.dune_resp,
                          "!rps":self.rps_resp,
                          "!fish":self.trackedChannels[0].forceCheckAndReport,
                          "!ttfish":self.trackedChannels[0].ttcheck,
@@ -87,9 +88,12 @@ class Frig:
 
     def arcane_resp(self, msg):
         delta = datetime.datetime(2024, 11, 8, 20, 0, 0) - datetime.datetime.now()
-        years, days, hours, minutes, seconds = delta.days//365, delta.days, delta.seconds//3600, (delta.seconds%3600)//60, delta.seconds%60
-        if years < 1: return f"arcane s2 comes out in approximately {days} days, {hours} hours, {minutes} minutes, and {seconds} seconds. hang in there."
+        days, hours, minutes, seconds = delta.days, delta.seconds//3600, (delta.seconds%3600)//60, delta.seconds%60
         return f"arcane s2 comes out in approximately 1 year, {days-365} days, {hours} hours, {minutes} minutes, and {seconds} seconds. hang in there."
+    def dune_resp(self, msg):
+        delta = datetime.datetime(2024, 12, 18, 20, 0, 0) - datetime.datetime.now()
+        days, hours, minutes, seconds = delta.days, delta.seconds//3600, (delta.seconds%3600)//60, delta.seconds%60
+        return [self.randomgif("dune", 300), f"{days} days, {hours} hours, {minutes} minutes, and {seconds} seconds."]
 
     def arcane_reference_resp(self, query="arcane", num=500):
         phrases = ["holy shit was that an arcane reference", "literal chills", "my honest reaction to that information:", "me rn:", "this is just like arcane fr", ""]
