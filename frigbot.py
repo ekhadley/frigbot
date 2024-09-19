@@ -91,8 +91,10 @@ class Frig:
         days, hours, minutes, seconds = delta.days, delta.seconds//3600, (delta.seconds%3600)//60, delta.seconds%60
         return f"arcane s2 comes out in approximately 1 year, {days-365} days, {hours} hours, {minutes} minutes, and {seconds} seconds. hang in there."
     def dune_resp(self, msg):
-        delta = datetime.datetime(2024, 12, 18, 20, 0, 0) - datetime.datetime.now()
-        days, hours, minutes, seconds = delta.days, delta.seconds//3600, (delta.seconds%3600)//60, delta.seconds%60
+        delta = datetime.datetime(2025, 12, 18, 20, 0, 0) - datetime.datetime.now()
+        year, days, hours, minutes, seconds = delta.days//365, delta.days%365, delta.seconds//3600, (delta.seconds%3600)//60, delta.seconds%60
+        print(delta.days, delta.days//365, year, year==1)
+        if year == 1: return [self.randomgif("dune", 300), f"1 year, {days} days, {hours} hours, {minutes} minutes, and {seconds} seconds"]
         return [self.randomgif("dune", 300), f"{days} days, {hours} hours, {minutes} minutes, and {seconds} seconds."]
 
     def arcane_reference_resp(self, query="arcane", num=500):
