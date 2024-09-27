@@ -234,7 +234,7 @@ class Frig:
         
         if info == []:
             if "dragondude" in name.lower(): return "ap is still a bitch (not on the ranked grind)"
-            return f"{name} is not on the ranked grind"
+            return f"{name} is not on the ranked grind (or riot changed their api again take your pick)"
         try:
             info = info[0]
             #name = info["summonerName"]
@@ -269,13 +269,15 @@ class Frig:
         ranks = [f"{rankColors[info['tier']]}{info['tier'].lower().capitalize()} {info['rank']}{aendc} " for info in infos]
         winrates = [f"[{info['wins']/(info['wins'] + info['losses']):.3f} over {info['wins']+info['losses']} games]\n" for info in infos]
 
+        print(lime, infos, endc)
+        print(bold, cyan, [len(name) for name in sumnames], endc)
+        print(bold, purple, [len(info['tier']+info['rank']) for info in infos], endc)
         namepad = max([len(name) for name in sumnames]) + 2
-        rankpad = max([len(info['tier']+info['rank']) for info in infos])
+        rankpad = max([len(info['tier']+info['rank']) for info in infos]) if len(infos) > 0 else 10
 
         resp = "```ansi\n"
         for i, info in enumerate(infos):
             resp += names[i] + " "*(namepad-len(rev[info['summonerId']])) + ranks[i] + " "*(rankpad-len(info['tier']+info['rank'])) + f"{info['leaguePoints']} LP " + winrates[i]
-            #resp +=  name + " "*(pad-len(name)) + f"{info['tier'].lower().capitalize()} {info['rank']} {info['leaguePoints']} LP. {info['wins']/(info['wins'] + info['losses']):.3f} over {info['wins']+info['losses']} games\n"
         resp += "```"
         return resp
 
@@ -293,7 +295,7 @@ class Frig:
             print(f"{bold}{gray}[FRIG]: {endc}{red}message read failed with exception:\n{e}{endc}")
             return None
     
-    def get_self_msg(self): # determines what the bot needs to send at any given instance based on new messages and timed messages
+    def get_self_msg(self): # determines what the bot needs to send at any given moment based on new messages and timed messages
         msg = self.get_last_msg()
         msg_id, msg_author_id = msg["id"], msg["author"]["id"] 
         if msg_id != self.last_msg_id and msg_author_id != self.botname:
@@ -327,9 +329,12 @@ class Frig:
                 print(f"{bold}{gray}[FRIG]: {endc}{yellow} command found: {command}{endc}")
                 #self.client.typing_action(self.chatid, msg)
                 return self.commands[command](msg)
-            except Exception as e:
-                print(f"{bold}{gray}[FRIG]: {endc}{red} command '{command}' failed with exception:\n{e}{endc}")
+            except KeyError as e:
+                print(f"{bold}{gray}[FRIG]: {endc}{red} unknown command '{command}' was called:\n{e}{endc}")
                 return f"command '{command}' not recognized"
+            except Exception as e:
+                print(f"{bold}{gray}[FRIG]: {endc}{red} known command '{command}' failed with exception:\n{e}{endc}")
+                return f"command '{command}' failed with exception:\n```ansi\n{e}\n```"
         else:
             return self.echo_resp(body)
 
@@ -437,7 +442,6 @@ class lolManager: # this handles requests to the riot api
         region = "americas" if region is None else region
         summonerID = self.get_summoner_id(summonerName, region)
         url = f"https://{region}.api.riotgames.com/lol/match/v5/matches/NA1_5004846015?api_key={self.riotkey}"
-        print(bold, purple, url, endc)
         get = requests.get(url)
         
         with open('data.json', 'w', encoding='utf-8') as f:
@@ -517,7 +521,6 @@ class ytChannelTracker:
 
     def timeSinceCheck(self): # returns the amount of time since last 
         delta = datetime.datetime.now() - self.lastCheckTime
-        sec = delta.days*24*60*60 + delta.seconds
         #print(f"{sec} sec since last check. check interval is {self.checkInterval} sec. checking in {self.checkInterval - sec}")
         return delta.days*24*60*60 + delta.seconds
 
