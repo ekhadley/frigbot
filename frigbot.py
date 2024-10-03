@@ -38,7 +38,7 @@ class Frig:
                          "!registeredsexoffenders":self.lol.list_known_summoners,
                          "!dalle":self.dalle_vivid_resp,
                          "!dallen":self.dalle_natural_resp,
-                         #"!pigwatch":self.pigwatch_resp,
+                         "!pigwatch":self.pigwatch_resp,
                          "!coin": self.coinflip_resp,
                          "!coinflip": self.coinflip_resp,
                          "!bayes": self.bayesian_resp,
@@ -300,7 +300,8 @@ class Frig:
         msg_id, msg_author_id = msg["id"], msg["author"]["id"] 
         if msg_id != self.last_msg_id and msg_author_id != self.botname:
             if self.pigwatch and msg_author_id == self.user_IDs["ASlowFatHorsey"]: 
-                self.client.addReaction(self.chatid, msg_id, '\U0001F416')
+                #self.client.addReaction(self.chatid, msg_id, '\U0001F416')
+                self.send("https://tenor.com/view/ap-bubble-speech-bubble-redditor-gif-6328777493315723823")
             try:
                 author = self.user_IDs[msg["author"]["global_name"]]
             except KeyError:
