@@ -15,7 +15,7 @@ class Frig:
         self.ant_client = anthropic.Anthropic(api_key=self.keys['anthropic'])
 
         self.lol = lolManager(self.keys["riot"], f"{self.configDir}/summonerIDs.json")
-        
+
         self.trackedChannels = []
         self.addNewTrackedChannel("femboy fishing", "UCqq5t2vi_G753e19j6U-Ypg", "femboyFishing.json")
         self.addNewTrackedChannel("femboy physics", "UCTE3WPc1oFdNYT8SnZCQW5w", "femboyPhysics.json")
@@ -36,8 +36,8 @@ class Frig:
                          "!lp":self.lp_resp,
                          "!piggies":self.group_lp_resp,
                          "!registeredsexoffenders":self.lol.list_known_summoners,
-                         "!dalle":self.dalle_vivid_resp,
-                         "!dallen":self.dalle_natural_resp,
+                         "!dalle":self.dalle_natural_resp,
+                         "!dallev":self.dalle_vivid_resp,
                          #"!pigwatch":self.pigwatch_resp,
                          "!coin": self.coinflip_resp,
                          "!coinflip": self.coinflip_resp,
@@ -190,6 +190,7 @@ class Frig:
             prompt = msg['content'].replace("!dalle", "").strip()
             response = self.openai_client.images.generate(model="dall-e-3", prompt=prompt, size="1024x1024", quality=quality, n=1, style=style)
             print(f"{bold}{gray}[DALLE]: {endc}{green}image generated {endc}")
+            #print(bold, purple, response.data[0].revised_prompt, endc)
             return response.data[0].url
         except Exception as e:
             print(f"{bold}{gray}[DALLE]: {endc}{red}text completion failed with exception:\n{e}{endc}")
