@@ -36,8 +36,8 @@ class Frig:
                          "!lp":self.lp_resp,
                          "!piggies":self.group_lp_resp,
                          "!registeredsexoffenders":self.lol.list_known_summoners,
-                         "!dalle":self.dalle_natural_resp,
-                         "!dallev":self.dalle_vivid_resp,
+                         "!dallen":self.dalle_natural_resp,
+                         "!dalle":self.dalle_vivid_resp,
                          #"!pigwatch":self.pigwatch_resp,
                          "!coin": self.coinflip_resp,
                          "!coinflip": self.coinflip_resp,
@@ -235,7 +235,7 @@ class Frig:
         
         if info == []:
             if "dragondude" in name.lower(): return "ap is still a bitch (not on the ranked grind)"
-            return f"{name} is not on the ranked grind (or riot changed their api again take your pick)"
+            return f"{name} is not on the ranked grind"
         try:
             info = info[0]
             #name = info["summonerName"]
@@ -270,9 +270,9 @@ class Frig:
         ranks = [f"{rankColors[info['tier']]}{info['tier'].lower().capitalize()} {info['rank']}{aendc} " for info in infos]
         winrates = [f"[{info['wins']/(info['wins'] + info['losses']):.3f} over {info['wins']+info['losses']} games]\n" for info in infos]
 
-        print(lime, infos, endc)
-        print(bold, cyan, [len(name) for name in sumnames], endc)
-        print(bold, purple, [len(info['tier']+info['rank']) for info in infos], endc)
+        #print(lime, infos, endc)
+        #print(bold, cyan, [len(name) for name in sumnames], endc)
+        #print(bold, purple, [len(info['tier']+info['rank']) for info in infos], endc)
         namepad = max([len(name) for name in sumnames]) + 2
         rankpad = max([len(info['tier']+info['rank']) for info in infos]) if len(infos) > 0 else 10
 
