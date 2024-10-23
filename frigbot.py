@@ -26,6 +26,7 @@ class Frig:
                          "!commands":self.help_resp,
                          "!cmds":self.help_resp,
                          "!gpt":self.gpt_resp,
+                         "!o1":self.o1_resp,
                          "!sonnet":self.sonnet_resp,
                          "!arcane":self.arcane_resp,
                          "!dune":self.dune_resp,
@@ -105,22 +106,29 @@ class Frig:
     def itysl_reference_resp(self, query="itysl", num=500):
         return self.randomgif(query, num)
 
-    def gpt_resp(self, msg):
-        self.send('. . .')
+    def openai_resp(self, model, msg):
         print(f"{bold}{gray}[GPT]: {endc}{yellow}text completion requested{endc}")
+        self.send('. . .')
+        print(f"{bold}{gray}[{model}]: {endc}{yellow}text completion requested{endc}")
+        prompt = msg['content'].replace("!gpt", "").strip()
         try:
-            prompt = msg['content'].replace("!gpt", "").strip()
-            completion = self.openai_client.chat.completions.create(model="gpt-4o", messages=[{"role": "user", "content": prompt}])
+            completion = self.openai_client.chat.completions.create(model=model, messages=[{"role": "user", "content": prompt}])
+            print(completion)
             resp = completion.choices[0].message.content.replace("\n\n", "\n")
             if len(resp) >= 2000:
                 nsplit = math.ceil(len(resp)/2000)
                 interval = len(resp)//nsplit
                 resp = [resp[i*interval:(i+1)*interval] for i in range(nsplit)]
-            print(f"{bold}{gray}[GPT]: {endc}{green}text completion generated {endc}")
+            print(f"{bold}{gray}[{model}]: {endc}{green}text completion generated {endc}")
             return resp
         except Exception as e:
-            print(f"{bold}{gray}[GPT]: {endc}{red}text completion failed with exception:\n{e}{endc}")
+            print(f"{bold}{gray}[{model}]: {endc}{red}text completion failed with exception:\n{e}{endc}")
             return "https://tenor.com/view/bkrafty-bkraftyerror-bafty-error-gif-25963379"
+
+    def gpt_resp(self, msg):
+        return self.openai_resp("gpt-4o", msg)
+    def o1_resp(self, msg):
+        return self.openai_resp("o1-preview", msg)
 
     def sonnet_resp(self, msg):
         self.send('. . .')
