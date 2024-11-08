@@ -90,7 +90,7 @@ class Frig:
         self.botname = self.user_IDs["FriggBot2000"]
 
     def arcane_resp(self, msg):
-        delta = datetime.datetime(2024, 11, 8, 20, 0, 0) - datetime.datetime.now()
+        delta = datetime.datetime(2024, 11, 9, 20, 0, 0) - datetime.datetime.now()
         days, hours, minutes, seconds = delta.days, delta.seconds//3600, (delta.seconds%3600)//60, delta.seconds%60
         return f"arcane s2 comes out in approximately {days} days, {hours} hours, {minutes} minutes, and {seconds} seconds. hang in there."
     def dune_resp(self, msg):
