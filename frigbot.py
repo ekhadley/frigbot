@@ -41,7 +41,6 @@ class Frig:
                          "!registeredsexoffenders":self.lol.list_known_summoners,
                          "!dallen":self.dalle_natural_resp,
                          "!dalle":self.dalle_vivid_resp,
-                         #"!pigwatch":self.pigwatch_resp,
                          "!coin": self.coinflip_resp,
                          "!coinflip": self.coinflip_resp,
                          "!bayes": self.bayesian_resp,
@@ -61,25 +60,6 @@ class Frig:
                        "juckyard":self.echo_resps[1]
                        }
         
-        self.pigwatch = False
-    
-    def pigwatch_resp(self, msg):
-        cmd = msg['content'].replace('!pigwatch', "").strip().lower()
-        if msg['author']['id'] == self.user_IDs["eekay"]:
-            if msg['author']['id']:
-                if cmd == 'on':
-                    self.pigwatch = True
-                    return 'Pigwatch enabled'
-                if cmd == 'off':
-                    self.pigwatch = False
-                    return 'Pigwatch disabled'
-                if len(cmd) == 0:
-                    return f"Please provide a command."
-                else:
-                    return f"Pigwatch command '{cmd} unrecognized."
-        else:
-            return ["Accessing camera. . .", "Performing retinal scan. . .", "Scan failed. You are not eekay.", "Nice try Piggy."]
-
     def coinflip_resp(self, *args, **kwargs):
         return random.choice(['heads', 'tails'])
 
@@ -90,7 +70,7 @@ class Frig:
         self.botname = self.user_IDs["FriggBot2000"]
 
     def arcane_resp(self, msg):
-        delta = datetime.datetime(2024, 11, 9, 20, 0, 0) - datetime.datetime.now()
+        delta = datetime.datetime(2024, 11, 9, 0, 0, 0) - datetime.datetime.now()
         days, hours, minutes, seconds = delta.days, delta.seconds//3600, (delta.seconds%3600)//60, delta.seconds%60
         return f"arcane s2 comes out in approximately {days} days, {hours} hours, {minutes} minutes, and {seconds} seconds. hang in there."
     def dune_resp(self, msg):
@@ -310,9 +290,6 @@ class Frig:
         msg = self.get_last_msg()
         msg_id, msg_author_id = msg["id"], msg["author"]["id"] 
         if msg_id != self.last_msg_id and msg_author_id != self.botname:
-            if self.pigwatch and msg_author_id == self.user_IDs["ASlowFatHorsey"]: 
-                #self.client.addReaction(self.chatid, msg_id, '\U0001F416')
-                self.send("https://tenor.com/view/ap-bubble-speech-bubble-redditor-gif-6328777493315723823")
             try:
                 author = self.user_IDs[msg["author"]["global_name"]]
             except KeyError:
