@@ -9,7 +9,7 @@ class Frig:
         self.chatid = chatid
         self.keypath = keypath
         self.configDir = configDir
-        self.read_saved_state(configDir)
+        self.read_saved_state()
         
         self.client = zenon.Client(self.keys["discord"])
 
@@ -148,7 +148,7 @@ class Frig:
         print(f"{bold}{gray}[SONNET]: {endc}{yellow}Bayesian analysis requested{endc}")
         try:
             prompt = msg['content'].replace("!sonnet", "").strip()
-            bayesian_system_prompt = """You are a helpful assistant specializing in Bayesian analysis and reasoning.\nWhen presented with a question or problem, your task is to:\n1. Interpret the question as a problem that can be solved using Bayesian reasoning.\n2. Explain how Bayes' theorem applies to this situation.\n3. Guide the user through the process of applying Bayesian analysis to their problem.\n4. If specific probabilities aren't provided, suggest reasonable estimates and explain why they're chosen.\n5. Show the step-by-step application of Bayes' theorem to solve the problem.\n6. Interpret the results in the context of the original question.\n\nRemember, Bayes' theorem is: P(A|B) = (P(B|A) * P(A)) / P(B)\nWhere:\n- P(A|B) is the posterior probability\n- P(B|A) is the likelihood\n- P(A) is the prior probability\n- P(B) is the marginal likelihood\n\nAlways strive to make your explanation brief, clear, and accessible, even to those who might not be familiar with Bayesian statistics."""
+            bayesian_system_prompt = """You are a helpful assistant specializing in Bayesian analysis and reasoning.\nWhen presented with a question or problem, your task is to:\n1. Interpret the question as a problem that can be solved using Bayesian reasoning.\n2. Explain how Bayes' theorem applies to this situation.\n3. Guide the user through the process of applying Bayesian analysis to their problem.\n4. If specific probabilities aren't provided, suggest reasonable estimates and explain why they're chosen.\n5. Show the step-by-step application of Bayes' theorem to solve the problem.\n6. Interpret the results in the context of the original question.\n\nRemember, Bayes' theorem is: P(A|B) = (P(B|A) * P(A)) / P(B)\nWhere:\n- P(A|B) is the posterior probability\n- P(B|A) is the likelihood\n- P(A) is the prior probability\n- P(B) is the marginal likelihood"""
             completion = self.ant_client.messages.create(
                 model="claude-3-5-sonnet-20240620",
                 max_tokens=1000,
@@ -336,7 +336,7 @@ class Frig:
         gifs = []
         if random.uniform(0, 1) < reference_gif_prob:
             if contains_scrambled(body, "itysl"): gifs.append(self.itysl_reference_resp())
-        if random.uniform(0, 1) < reference_gif_prob / 10:
+        if random.uniform(0, 1) < reference_gif_prob / 5:
             if contains_scrambled(body, "arcane"): gifs.append(self.arcane_reference_resp())
         if len(gifs) > 0: return gifs
         return ""
