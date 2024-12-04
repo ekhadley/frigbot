@@ -258,7 +258,7 @@ class Frig:
 
         names = [f"{abold}{rev[info['summonerId']]}{aendc}" for info in infos]
         ranks = [f"{rankColors[info['tier']]}{info['tier'].lower().capitalize()} {info['rank']}{aendc} " for info in infos]
-        winrates = [f"[{info['wins']/(info['wins'] + info['losses']):.3f} over {info['wins']+info['losses']} games]\n" for info in infos]
+        winrates = [f"[{info['wins']/(info['wins'] + info['losses']):.3f} over {info['wins']+info['losses']} games]" for info in infos]
 
         #print(lime, infos, endc)
         #print(bold, cyan, [len(name) for name in sumnames], endc)
@@ -269,10 +269,13 @@ class Frig:
         resp = "```ansi\n"
         for i, info in enumerate(infos):
             resp += names[i] + " "*(namepad-len(rev[info['summonerId']])) + ranks[i] + " "*(rankpad-len(info['tier']+info['rank'])) + f"{info['leaguePoints']} LP " + winrates[i]
+            if 'xylotile' in names[i]: resp += " (0/1 vs ap)"
+            elif 'dragondude' in names[i]: resp += " (1/0 vs xylotile)"
+            resp += "\n"
         resp += "```"
         return resp
 
-    def send(self, msg): # sends a string or list of strings as a message/messages in the chat
+    def send(self, msg): # sends a string/list of strings as a message/messages in the chat
         if isinstance(msg, list):
             for m in msg: self.send(m)
         elif isinstance(msg, str) and msg != "":
