@@ -110,39 +110,6 @@ class Frig:
     def o1_resp(self, msg):
         return self.openai_resp("o1-preview", msg)
 
-    def sonnet_resp(self, msg):
-        self.send('. . .')
-        print(f"{bold}{gray}[SONNET]: {endc}{yellow}text completion requested{endc}")
-        try:
-            prompt = msg['content'].replace("!sonnet", "").strip()
-            completion = self.ant_client.messages.create(
-                model="claude-3-5-sonnet-20240620",
-                max_tokens=1000,
-                temperature=0,
-                system="You are a helpful and intelligent assistant.",
-                messages=[
-                    {
-                        "role": "user",
-                        "content": [
-                            {
-                                "type": "text",
-                                "text": prompt
-                            }
-                        ]
-                    }
-                ]
-            )
-            resp = completion.content[0].text.replace("\n\n", "\n")
-            if len(resp) >= 2000:
-                nsplit = math.ceil(len(resp)/2000)
-                interval = len(resp)//nsplit
-                resp = [resp[i*interval:(i+1)*interval] for i in range(nsplit)]
-            print(f"{bold}{gray}[SONNET]: {endc}{green}text completion generated {endc}")
-            return resp
-        except Exception as e:
-            print(f"{bold}{gray}[SONNSET]: {endc}{red}text completion failed with exception:\n{e}{endc}")
-            return "https://tenor.com/view/bkrafty-bkraftyerror-bafty-error-gif-25963379"
-
     def bayesian_resp(self, msg):
         self.send('. . .')
         print(f"{bold}{gray}[SONNET]: {endc}{yellow}Bayesian analysis requested{endc}")
