@@ -27,7 +27,6 @@ class Frig:
                          "!cmds":self.help_resp,
                          "!gpt":self.gpt_resp,
                          "!o1":self.o1_resp,
-                         "!sonnet":self.sonnet_resp,
                          "!arcane":self.arcane_resp,
                          "!dune":self.dune_resp,
                          "!rps":self.rps_resp,
