@@ -1,6 +1,7 @@
-from Zenon.zenon import zenon
-import time, os, sys, platform, argparse
-from frigbot import *
+import sys
+import platform
+import argparse
+from frigbot import Frig
 
 chatid = 551246526924455937 # kissy
 eekayid = 972938534661009519 # eekay

@@ -1,6 +1,5 @@
-import datetime, random, math, json, requests, time, os, openai, anthropic
-from googleapiclient.discovery import build
-from Zenon.zenon import zenon
+import datetime
+import json
 
 purple = '\033[95m'
 blue = '\033[94m'
@@ -34,12 +33,15 @@ agray = "[38;5;8m"
 abold = '[1m'
 aunderline = '[4m'
 aendc = '[0m'
+rankColors = {'IRON':agray, 'BRONZE':ared, 'SILVER':awhite, 'GOLD':ayellow, 'PLATINUM':acyan, 'EMERALD':alime, 'DIAMOND':ablue, 'MASTER':red, 'GRANDMASTER':apink, 'CHALLENGER':apurple}
 
 def contains_scrambled(msg, key):
     state = 0
     for c in msg:
-        if c.lower() == key[state]: state += 1
-        if state == len(key): return True
+        if c.lower() == key[state]:
+            state += 1
+        if state == len(key):
+            return True
     return False
 
 
@@ -50,8 +52,10 @@ def strptime(dstr): return datetime.datetime.strptime(dstr, "%Y-%b-%d (%H:%M:%S)
 
 def dateload(*args):
     assert 0 < (nargs:=len(args)) and nargs < 3, f"{red}found {len(args)} args{endc}. Expected 2 args (dir, name) or 1 (path)"
-    if len(args) == 1: path = args[0]
-    else: path = f"{args[0]}/{args[1]}"
+    if len(args) == 1:
+        path = args[0]
+    else:
+        path = f"{args[0]}/{args[1]}"
     path += "" if path.endswith('.txt') else '.txt'
     with open(path) as f:
         return strptime(f.readline().strip())
@@ -62,8 +66,10 @@ def datesave(date, pth):
 
 def loadjson(*args):
     assert 0 < (nargs:=len(args)) and nargs < 3, f"{red}found {len(args)} args{endc}. Expected 2 args (dir, name) or 1 (path)"
-    if len(args) == 1: path = args[0]
-    else: path = f"{args[0]}/{args[1]}"
+    if len(args) == 1:
+        path = args[0]
+    else:
+        path = f"{args[0]}/{args[1]}"
     path += "" if path.endswith('.json') else '.json'
     with open(path) as f:
         return json.load(f)

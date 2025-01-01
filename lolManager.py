@@ -1,4 +1,7 @@
-from utils import *
+import json
+import requests
+from utils import gray, bold, endc, yellow, blue, green, red
+from utils import loadjson
 
 class lolManager: # this handles requests to the riot api
     def __init__(self, riotkey, savePath):
@@ -52,7 +55,7 @@ class lolManager: # this handles requests to the riot api
     # https://developer.riotgames.com/apis#match-v5/GET_getMatch to get info about the game from the id from the match id
     def match_history(self, summonerName, region=None):
         region = "americas" if region is None else region
-        summonerID = self.get_summoner_id(summonerName, region)
+        #summonerID = self.get_summoner_id(summonerName, region)
         url = f"https://{region}.api.riotgames.com/lol/match/v5/matches/NA1_5004846015?api_key={self.riotkey}"
         get = requests.get(url)
         

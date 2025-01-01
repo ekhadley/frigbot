@@ -1,4 +1,7 @@
-from utils import *
+from googleapiclient.discovery import build
+import json
+import datetime
+from utils import bold, gray, endc, yellow, green, red
 
 class ytChannelTracker:
     def __init__(self, name, ytkey, channelID, savePath, checkInterval=10800):
@@ -31,7 +34,8 @@ class ytChannelTracker:
         if self.shouldCheck():
             changed, newest, succeeded = self.getLatestVidId()
             self.recordNewRead(videoId=newest)
-            if not succeeded: return False
+            if not succeeded:
+                return False
             return changed
         return False
 
@@ -52,7 +56,8 @@ class ytChannelTracker:
             with open(self.savePath, "r") as f:
                 saved = json.load(f)
             saved["lastCheckTime"] = self.now()
-            if videoId is not None: saved["videoId"] = videoId
+            if videoId is not None:
+                saved["videoId"] = videoId
             with open(self.savePath, "w") as f:
                 f.write(json.dumps(saved, indent=4))
         except Exception as e:

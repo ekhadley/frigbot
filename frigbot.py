@@ -1,6 +1,17 @@
-from utils import *
+import math
+import random
+import datetime
+import time
+import json
+import requests
+import openai
+import anthropic
+
 from ytTracker import ytChannelTracker
 from lolManager import lolManager
+
+from utils import red, endc, yellow, bold, cyan, gray, green, aendc, rankColors, abold
+from utils import loadjson, contains_scrambled
 
 class Frig:
     def __init__(self, keypath, configDir, chatid):
@@ -11,7 +22,8 @@ class Frig:
         self.configDir = configDir
         self.read_saved_state()
         
-        self.client = zenon.Client(self.keys["discord"])
+        self.url = "https://discordapp.com/api/v9/"
+        self.token = self.keys['discord']
 
         self.openai_client = openai.OpenAI(api_key = self.keys['openai'])
         self.ant_client = anthropic.Anthropic(api_key=self.keys['anthropic'])
@@ -59,6 +71,24 @@ class Frig:
                        "juckyard":self.echo_resps[1]
                        }
         
+    def send(self, msg): # sends a string/list of strings as a message/messages in the chat
+        if isinstance(msg, list):
+            for m in msg:
+                self.send(m)
+        elif isinstance(msg, str) and msg != "":
+            #self.client.send_message(self.chatid, msg)
+            requests.post(
+                f"{self.url}channels/{self.chatid}/messages",
+                data={"content":str(msg),
+                #"nonce":str(random.randint(10000000, 99999999))
+                },
+                headers={"Authorization":self.token}
+            ).text
+    def get_message(self):
+        url = f"{self.url}channels/{self.chatid}/messages?limit=1"
+        res = requests.get(url, headers={"Authorization":self.token}).json()
+        return res[0] if isinstance(res, list) else res
+
     def coinflip_resp(self, *args, **kwargs):
         return random.choice(['heads', 'tails'])
 
@@ -76,7 +106,8 @@ class Frig:
         delta = datetime.datetime(2025, 12, 18, 20, 0, 0) - datetime.datetime.now()
         year, days, hours, minutes, seconds = delta.days//365, delta.days%365, delta.seconds//3600, (delta.seconds%3600)//60, delta.seconds%60
         print(delta.days, delta.days//365, year, year==1)
-        if year == 1: return [self.randomgif("dune", 300), f"1 year, {days} days, {hours} hours, {minutes} minutes, and {seconds} seconds"]
+        if year == 1:
+            return [self.randomgif("dune", 300), f"1 year, {days} days, {hours} hours, {minutes} minutes, and {seconds} seconds"]
         return [self.randomgif("dune", 300), f"{days} days, {hours} hours, {minutes} minutes, and {seconds} seconds."]
 
     def arcane_reference_resp(self, query="arcane", num=500):
@@ -156,8 +187,9 @@ class Frig:
     def dalle_natural_resp(self, msg): return self.get_dalle3_link(msg, style='natural')
 
     def help_resp(self, msg):
-        resp = f"commands:"
-        for c in self.commands: resp += f"\n{c}"
+        resp = "commands:"
+        for c in self.commands:
+            resp += f"\n{c}"
         return resp
 
     def rps_resp(self, msg):
@@ -168,17 +200,27 @@ class Frig:
             self.rps_scores[authorid+"d"] = 0
             self.rps_scores[authorid+"w"] = 0
             self.rps_scores[authorid+"l"] = 0
-        if rollname == "": return f"Your score is {self.rps_scores[authorid+'w']}/{self.rps_scores[authorid+'d']}/{self.rps_scores[authorid+'l']}"
+        if rollname == "":
+            return f"Your score is {self.rps_scores[authorid+'w']}/{self.rps_scores[authorid+'d']}/{self.rps_scores[authorid+'l']}"
 
         opts = ["rock", "paper", "scissors"]
-        if rollname not in opts: return f"{rollname} is not an option. please choose one of {opts}"
+        if rollname not in opts:
+            return f"{rollname} is not an option. please choose one of {opts}"
         
         roll = opts.index(rollname)
-        if authorid == self.user_IDs["Xylotile"]: botroll = random.choice([(roll+1)%3]*6 + [(roll+2)%3, roll])
-        else: botroll = random.randint(0, 2)
-        if roll == botroll: report = f"We both chose {opts[botroll]}"; self.rps_scores[authorid+"d"] += 1
-        if (roll+2)%3 == botroll: report = f"I chose {opts[botroll]}. W"; self.rps_scores[authorid+"w"] += 1
-        if (roll+1)%3 == botroll: report = f"I chose {opts[botroll]}. shitter"; self.rps_scores[authorid+"l"] += 1
+        if authorid == self.user_IDs["Xylotile"]:
+            botroll = random.choice([(roll+1)%3]*6 + [(roll+2)%3, roll])
+        else:
+            botroll = random.randint(0, 2)
+        if roll == botroll:
+            report = f"We both chose {opts[botroll]}"
+            self.rps_scores[authorid+"d"] += 1
+        if (roll+2)%3 == botroll:
+            report = f"I chose {opts[botroll]}. W"
+            self.rps_scores[authorid+"w"] += 1
+        if (roll+1)%3 == botroll:
+            report = f"I chose {opts[botroll]}. shitter"
+            self.rps_scores[authorid+"l"] += 1
         self.write_rps_scores()
         
         update = f"Your score is now {self.rps_scores[authorid+'w']}/{self.rps_scores[authorid+'d']}/{self.rps_scores[authorid+'l']}"
@@ -187,10 +229,12 @@ class Frig:
     def lp_resp(self, msg):
         name = msg["content"].replace("!lp", "").strip().lower()
         info = self.lol.get_ranked_info(name)
-        if isinstance(info, str): return info
+        if isinstance(info, str):
+            return info
         
         if info == []:
-            if "dragondude" in name.lower(): return "ap is still a bitch (not on the ranked grind)"
+            if "dragondude" in name.lower():
+                return "ap is still a bitch (not on the ranked grind)"
             return f"{name} is not on the ranked grind"
         try:
             info = info[0]
@@ -215,7 +259,7 @@ class Frig:
         sumnames = ["eekay", "xylotile", "dragondude", "maestrofluff", "smolyoshi"]
         rev = {v:k for k, v in self.lol.summonerIDs.items()}
         tierOrder = {'IRON':0, 'BRONZE':1, 'SILVER':2, 'GOLD':3, 'PLATINUM':4, 'EMERALD':5, 'DIAMOND':6, 'MASTER':7, 'GRANDMASTER':8, 'CHALLENGER':9}
-        rankColors = {'IRON':agray, 'BRONZE':ared, 'SILVER':awhite, 'GOLD':ayellow, 'PLATINUM':acyan, 'EMERALD':alime, 'DIAMOND':ablue, 'MASTER':red, 'GRANDMASTER':apink, 'CHALLENGER':apurple}
+        #rankColors = {'IRON':agray, 'BRONZE':ared, 'SILVER':awhite, 'GOLD':ayellow, 'PLATINUM':acyan, 'EMERALD':alime, 'DIAMOND':ablue, 'MASTER':red, 'GRANDMASTER':apink, 'CHALLENGER':apurple}
         rankOrder = {'IV':0, 'III':1, 'II':2, "I":3}
 
         infos = [self.lol.get_ranked_info(name) for name in sumnames]
@@ -235,21 +279,18 @@ class Frig:
         resp = "```ansi\n"
         for i, info in enumerate(infos):
             resp += names[i] + " "*(namepad-len(rev[info['summonerId']])) + ranks[i] + " "*(rankpad-len(info['tier']+info['rank'])) + f"{info['leaguePoints']} LP " + winrates[i]
-            if 'xylotile' in names[i]: resp += " (0/1 vs ap)"
-            elif 'dragondude' in names[i]: resp += " (1/0 vs xylotile)"
+            if 'xylotile' in names[i]:
+                resp += " (0/1 vs ap)"
+            elif 'dragondude' in names[i]:
+                resp += " (1/0 vs xylotile)"
             resp += "\n"
         resp += "```"
         return resp
 
-    def send(self, msg): # sends a string/list of strings as a message/messages in the chat
-        if isinstance(msg, list):
-            for m in msg: self.send(m)
-        elif isinstance(msg, str) and msg != "":
-            self.client.send_message(self.chatid, msg)
 
     def get_last_msg(self): # reads the most recent message in the chat, returns a json
         try:
-            msg = self.client.get_message(self.chatid)
+            msg = self.get_message()
             return msg
         except Exception as e:
             print(f"{bold}{gray}[FRIG]: {endc}{red}message read failed with exception:\n{e}{endc}")
@@ -259,9 +300,8 @@ class Frig:
         msg = self.get_last_msg()
         msg_id, msg_author_id = msg["id"], msg["author"]["id"] 
         if msg_id != self.last_msg_id and msg_author_id != self.botname:
-            try:
-                author = self.user_IDs[msg["author"]["global_name"]]
-            except KeyError:
+            author_global = msg["author"]["global_name"]
+            if author_global not in self.user_IDs:
                 print(f"{bold}{gray}[FRIG]: {endc}{yellow}new username '{msg['author']['global_name']}' detected. storing their ID. {endc}")
                 self.user_IDs[msg["author"]["global_name"]] = msg_author_id
                 with open(f"{self.configDir}/userIDs.json", "w") as f:
@@ -276,7 +316,8 @@ class Frig:
         for channel in self.trackedChannels:
             if channel.checkLatestUpload():
                 reports.append(channel.reportVid()) # broken in the case where this loop should report multiple new videos. ugh.
-        if len(reports) == 0: return "" 
+        if len(reports) == 0:
+            return "" 
         return reports
 
     def get_response_to_new_msg(self, msg): # determines how to respond to a newly detected message. 
@@ -285,7 +326,6 @@ class Frig:
             try:
                 command = body.split(" ")[0]
                 print(f"{bold}{gray}[FRIG]: {endc}{yellow} command found: {command}{endc}")
-                #self.client.typing_action(self.chatid, msg)
                 return self.commands[command](msg)
             except KeyError as e:
                 print(f"{bold}{gray}[FRIG]: {endc}{red} unknown command '{command}' was called:\n{e}{endc}")
@@ -302,12 +342,10 @@ class Frig:
             if e in bsplit:
                 print(f"{bold}{gray}[FRIG]: {endc}{gray} issuing echo for '{e}'{endc}")
                 return self.echoes[e]
-        gifs = []
-        if random.uniform(0, 1) < reference_gif_prob:
-            if contains_scrambled(body, "itysl"): gifs.append(self.itysl_reference_resp())
-        if random.uniform(0, 1) < reference_gif_prob / 5:
-            if contains_scrambled(body, "arcane"): gifs.append(self.arcane_reference_resp())
-        if len(gifs) > 0: return gifs
+        if (random.uniform(0, 1) < reference_gif_prob) and contains_scrambled(body, "itysl"):
+                return self.itysl_reference_resp()
+        if (random.uniform(0, 1) < reference_gif_prob / 5) and contains_scrambled(body, "arcane"):
+                return self.arcane_reference_resp()
         return ""
 
     def runloop(self):
