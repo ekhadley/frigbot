@@ -19,7 +19,8 @@ if __name__ == '__main__':
     elif system == "Linux":
         keypath = "/home/ek/Desktop/keys.json"
         configDir = "/home/ek/Desktop/wgmn/frigbot/config"
-    else: assert 0, f"unrecognized host system: {system}"
+    else:
+        assert 0, f"unrecognized host system: {system}"
 
     frig = Frig(keypath=keypath, configDir=configDir, chatid=args.chatid)
     '''
