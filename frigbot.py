@@ -76,12 +76,9 @@ class Frig:
             for m in msg:
                 self.send(m)
         elif isinstance(msg, str) and msg != "":
-            #self.client.send_message(self.chatid, msg)
             requests.post(
                 f"{self.url}channels/{self.chatid}/messages",
-                data={"content":str(msg),
-                #"nonce":str(random.randint(10000000, 99999999))
-                },
+                data={"content":str(msg)},
                 headers={"Authorization":self.token}
             ).text
     def get_message(self):
