@@ -47,6 +47,7 @@ class Frig:
                          "!physics":self.trackedChannels[1].forceCheckAndReport,
                          "!ttphysics":self.trackedChannels[1].ttcheck,
                          "!gif":self.random_gif_resp,
+                         "!roll":self.roll_resp,
                          "!lp":self.lp_resp,
                          "!piggies":self.group_lp_resp,
                          "!registeredsexoffenders":self.lol.list_known_summoners,
@@ -376,6 +377,13 @@ class Frig:
     def random_gif_resp(self, msg, num=100):
         query = msg['content'].replace("!gif", "").strip()
         return self.randomgif(query, num)
+    def roll_resp(self, msg):
+        try:
+            m = int(msg['content'].replace("!roll", "").strip())
+            assert m > 0
+            return str(random.randint(1, m))
+        except Exception:
+            return "choose an int > 0"
 
     def wait(self):
         time.sleep(self.loop_delay)
