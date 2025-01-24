@@ -323,8 +323,8 @@ class Frig:
     def get_response_to_new_msg(self, msg): # determines how to respond to a newly detected message. 
         body = msg["content"].lstrip()
         if body.startswith("!"):
+            command = body.split(" ")[0]
             try:
-                command = body.split(" ")[0]
                 print(f"{bold}{gray}[FRIG]: {endc}{yellow} command found: {command}{endc}")
                 return self.commands[command](msg)
             except KeyError as e:
