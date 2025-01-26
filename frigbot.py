@@ -5,7 +5,6 @@ import time
 import json
 import requests
 import openai
-import anthropic
 
 from ytTracker import ytChannelTracker
 from lolManager import lolManager
@@ -26,7 +25,6 @@ class Frig:
         self.token = self.keys['discord']
 
         self.openai_client = openai.OpenAI(api_key = self.keys['openai'])
-        self.ant_client = anthropic.Anthropic(api_key=self.keys['anthropic'])
 
         self.lol = lolManager(self.keys["riot"], f"{self.configDir}/summonerIDs.json")
 
@@ -56,7 +54,6 @@ class Frig:
                          "!dalle":self.dalle_vivid_resp,
                          "!coin": self.coinflip_resp,
                          "!coinflip": self.coinflip_resp,
-                         "!bayes": self.bayesian_resp,
                          }
 
         self.echo_resps = [ # the static repsonse messages for trigger words which I term "echo" responses
@@ -138,36 +135,6 @@ class Frig:
         return self.openai_resp("gpt-4o", msg)
     def o1_resp(self, msg):
         return self.openai_resp("o1-preview", msg)
-
-    def bayesian_resp(self, msg):
-        self.send('. . .')
-        print(f"{bold}{gray}[SONNET]: {endc}{yellow}Bayesian analysis requested{endc}")
-        try:
-            prompt = msg['content'].replace("!sonnet", "").strip()
-            bayesian_system_prompt = """You are a helpful assistant specializing in Bayesian analysis and reasoning.\nWhen presented with a question or problem, your task is to:\n1. Interpret the question as a problem that can be solved using Bayesian reasoning.\n2. Explain how Bayes' theorem applies to this situation.\n3. Guide the user through the process of applying Bayesian analysis to their problem.\n4. If specific probabilities aren't provided, suggest reasonable estimates and explain why they're chosen.\n5. Show the step-by-step application of Bayes' theorem to solve the problem.\n6. Interpret the results in the context of the original question.\n\nRemember, Bayes' theorem is: P(A|B) = (P(B|A) * P(A)) / P(B)\nWhere:\n- P(A|B) is the posterior probability\n- P(B|A) is the likelihood\n- P(A) is the prior probability\n- P(B) is the marginal likelihood"""
-            completion = self.ant_client.messages.create(
-                model="claude-3-5-sonnet-20240620",
-                max_tokens=1000,
-                temperature=0,
-                system=bayesian_system_prompt,
-                messages=[{
-                    "role": "user",
-                    "content": [{
-                        "type": "text",
-                        "text": f"Please apply Bayesian reasoning to answer the following question or solve the following problem concisely: {prompt}"
-                        }
-                    ]}
-                ]
-            )
-            resp = completion.content[0].text.replace("\n\n", "\n")
-            if len(resp) >= 2000:
-                nsplit = math.ceil(len(resp)/2000)
-                interval = len(resp)//nsplit
-                resp = [resp[i*interval:(i+1)*interval] for i in range(nsplit)]
-            return resp
-        except Exception as e:
-            print(f"{bold}{gray}[SONNET]: {endc}{red}Bayesian analysis failed with exception:\n{e}{endc}")
-            return "https://tenor.com/view/bkrafty-bkraftyerror-bafty-error-gif-25963379"
 
     def get_dalle3_link(self, msg, style='vivid', quality='hd'):
         print(f"{bold}{gray}[DALLE]: {endc}{yellow}image generation requested{endc}")
