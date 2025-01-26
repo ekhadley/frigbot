@@ -1,5 +1,4 @@
 from googleapiclient.discovery import build
-from google.cloud import discoveryengine as disco
 
 import json
 import datetime
