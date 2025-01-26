@@ -21,16 +21,7 @@ if __name__ == '__main__':
         configDir = "/home/ek/Desktop/wgmn/frigbot/config"
     else:
         assert 0, f"unrecognized host system: {system}"
+        exit()
 
     frig = Frig(keypath=keypath, configDir=configDir, chatid=args.chatid)
-    '''
-    while 1:
-        try:
-            frig.runloop()
-        except Exception as e:
-            print(f"{red}, {bold}, [FRIG] CRASHED WITH EXCEPTION:\n{e}")
-            time.sleep(3)
-    frig.send(f"frigbot has crashed. F for frigbot. spam @eekay")
-    '''
     frig.runloop()
-    #assert 0, f"reached maximum consecutive crashes. aborting bot."
