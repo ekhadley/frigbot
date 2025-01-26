@@ -1,5 +1,5 @@
-#from googleapiclient.discovery import build
-import googleapiclient.discovery as disco
+import googleapiclient
+from googleapiclient.discovery import build
 
 import json
 import datetime
@@ -12,7 +12,8 @@ class ytChannelTracker:
         self.savePath = savePath # where on disk do we keep most recent video ID (not rly a log, just the most recent)
         self.channelID = channelID # the channelid (not the visible one) of the channel we are monitoring
         self.mostRecentVidId, self.lastCheckTime = self.readSave() # read the most recent video ID and time of last api request
-        self.yt = disco.build('youtube', 'v3', developerKey=ytkey) # initialize our client
+        print(googleapiclient.__dict__)
+        self.yt = build('youtube', 'v3', developerKey=ytkey) # initialize our client
 
     def getLatestVidId(self): # uses ytv3 api to get the time and id of most recent video upload from channel
         print(f"{bold}{gray}[YT]: {endc}{yellow}checking latest video from channel: {self.channelName}{endc}")
