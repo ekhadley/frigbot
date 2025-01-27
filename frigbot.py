@@ -187,6 +187,7 @@ class Frig:
         if (roll+1)%3 == botroll:
             report = f"I chose {opts[botroll]}. shitter"
             self.rps_scores[authorid+"l"] += 1
+        print(f"bot rolled: {botroll} ({opts[botroll]}), user rolled {roll} ({opts[roll]})")
         self.write_rps_scores()
         
         update = f"Your score is now {self.rps_scores[authorid+'w']}/{self.rps_scores[authorid+'d']}/{self.rps_scores[authorid+'l']}"
