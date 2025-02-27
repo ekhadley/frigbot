@@ -17,8 +17,8 @@ if __name__ == '__main__':
         keypath = "D:\\frig\\keys.json"
         configDir = "D:\\wgmn\\frigbot\\config"
     elif system == "Linux":
-        keypath = "/home/ek/Desktop/keys.json"
-        configDir = "/home/ek/Desktop/wgmn/frigbot/config"
+        keypath = "/home/ek/frigkeys.json"
+        configDir = "/home/ek/wgmn/frigbot/config"
     else:
         assert 0, f"unrecognized host system: {system}"
         exit()
