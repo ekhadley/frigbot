@@ -25,6 +25,7 @@ class Frig:
         self.token = self.keys['discord']
 
         self.openai_client = openai.OpenAI(api_key = self.keys['openai'])
+        self.gpt_resp_history = {}
 
         self.lol = lolManager(self.keys["riot"], f"{self.configDir}/summonerIDs.json")
 
@@ -37,8 +38,8 @@ class Frig:
                          "!commands":self.help_resp,
                          "!cmds":self.help_resp,
                          "!gpt":self.gpt_resp,
+                         "!gpth":self.gpt_resp,
                          "!o1":self.o1_resp,
-                         "!arcane":self.arcane_resp,
                          "!dune":self.dune_resp,
                          "!rps":self.rps_resp,
                          "!fish":self.trackedChannels[0].forceCheckAndReport,
@@ -94,10 +95,6 @@ class Frig:
         self.keys = loadjson(self.keypath)
         self.botname = self.user_IDs["FriggBot2000"]
 
-    def arcane_resp(self, msg):
-        delta = datetime.datetime(2024, 11, 9, 2, 0, 0) - datetime.datetime.now()
-        days, hours, minutes, seconds = delta.days, delta.seconds//3600, (delta.seconds%3600)//60, delta.seconds%60
-        return f"arcane s2 comes out in approximately {days} days, {hours} hours, {minutes} minutes, and {seconds} seconds. hang in there."
     def dune_resp(self, msg):
         delta = datetime.datetime(2025, 12, 18, 20, 0, 0) - datetime.datetime.now()
         year, days, hours, minutes, seconds = delta.days//365, delta.days%365, delta.seconds//3600, (delta.seconds%3600)//60, delta.seconds%60
@@ -106,9 +103,6 @@ class Frig:
             return [self.randomgif("dune", 300), f"1 year, {days} days, {hours} hours, {minutes} minutes, and {seconds} seconds"]
         return [self.randomgif("dune", 300), f"{days} days, {hours} hours, {minutes} minutes, and {seconds} seconds."]
 
-    def arcane_reference_resp(self, query="arcane", num=500):
-        phrases = ["holy shit was that an arcane reference", "literal chills", "my honest reaction to that information:", "me rn:", "this is just like arcane fr", ""]
-        return [random.choice(phrases), self.randomgif(query, num)]
     def itysl_reference_resp(self, query="itysl", num=500):
         return self.randomgif(query, num)
 
@@ -135,6 +129,9 @@ class Frig:
         return self.openai_resp("gpt-4o", msg)
     def o1_resp(self, msg):
         return self.openai_resp("o1-preview", msg)
+    
+
+
 
     def get_dalle3_link(self, msg, style='vivid', quality='hd'):
         print(f"{bold}{gray}[DALLE]: {endc}{yellow}image generation requested{endc}")
@@ -153,9 +150,32 @@ class Frig:
     def dalle_natural_resp(self, msg): return self.get_dalle3_link(msg, style='natural')
 
     def help_resp(self, msg):
-        resp = "commands:"
-        for c in self.commands:
-            resp += f"\n{c}"
+        command_descriptions = {
+            "!help": "Displays this help message.",
+            "!commands": "Alias for !help.",
+            "!cmds": "Alias for !help.",
+            "!gpt": "Generates a response using GPT-4o.",
+            "!o1": "Generates a response using OpenAI's O1-preview model.",
+            "!dune": "Shows countdown to Dune: Part Two release.",
+            "!rps": "Play rock-paper-scissors with the bot. Usage: `!rps [rock|paper|scissors]`.",
+            "!fish": "Checks for a new video from 'Femboy Fishing'.",
+            "!ttfish": "Shows time remaining until the next check for 'Femboy Fishing'.",
+            "!physics": "Checks for a new video from 'Femboy Physics'.",
+            "!ttphysics": "Shows time remaining until the next check for 'Femboy Physics'.",
+            "!gif": "Searches for a random GIF. Usage: `!gif [search term]`.",
+            "!roll": "Rolls a random number. Usage: `!roll [max value]`.",
+            "!lp": "Retrieves ranked info for a League of Legends summoner. Usage: `!lp [summoner name]`.",
+            "!piggies": "Displays ranked info for a group of predefined League of Legends players.",
+            "!registeredsexoffenders": "Lists all known League of Legends summoners in Frig's database.",
+            "!dallen": "Generates an image using DALL-E in 'natural' style.",
+            "!dalle": "Generates an image using DALL-E in 'vivid' style.",
+            "!coin": "Flips a coin.",
+            "!coinflip": "Alias for !coin."
+        }
+        resp = "Available commands:"
+        for cmd, desc in command_descriptions.items():
+            resp += f"\n\t{cmd} - {desc}"
+        
         return resp
 
     def rps_resp(self, msg):
@@ -226,7 +246,6 @@ class Frig:
         sumnames = ["eekay", "xylotile", "dragondude", "maestrofluff", "smolyoshi"]
         rev = {v:k for k, v in self.lol.summonerIDs.items()}
         tierOrder = {'IRON':0, 'BRONZE':1, 'SILVER':2, 'GOLD':3, 'PLATINUM':4, 'EMERALD':5, 'DIAMOND':6, 'MASTER':7, 'GRANDMASTER':8, 'CHALLENGER':9}
-        #rankColors = {'IRON':agray, 'BRONZE':ared, 'SILVER':awhite, 'GOLD':ayellow, 'PLATINUM':acyan, 'EMERALD':alime, 'DIAMOND':ablue, 'MASTER':red, 'GRANDMASTER':apink, 'CHALLENGER':apurple}
         rankOrder = {'IV':0, 'III':1, 'II':2, "I":3}
 
         infos = [self.lol.get_ranked_info(name) for name in sumnames]
@@ -237,9 +256,6 @@ class Frig:
         ranks = [f"{rankColors[info['tier']]}{info['tier'].lower().capitalize()} {info['rank']}{aendc} " for info in infos]
         winrates = [f"[{info['wins']/(info['wins'] + info['losses']):.3f} over {info['wins']+info['losses']} games]" for info in infos]
 
-        #print(lime, infos, endc)
-        #print(bold, cyan, [len(name) for name in sumnames], endc)
-        #print(bold, purple, [len(info['tier']+info['rank']) for info in infos], endc)
         namepad = max([len(name) for name in sumnames]) + 2
         rankpad = max([len(info['tier']+info['rank']) for info in infos]) if len(infos) > 0 else 10
 
@@ -311,8 +327,6 @@ class Frig:
                 return self.echoes[e]
         if (random.uniform(0, 1) < reference_gif_prob) and contains_scrambled(body, "itysl"):
                 return self.itysl_reference_resp()
-        if (random.uniform(0, 1) < reference_gif_prob / 5) and contains_scrambled(body, "arcane"):
-                return self.arcane_reference_resp()
         return ""
 
     def runloop(self):
