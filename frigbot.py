@@ -25,7 +25,7 @@ class Frig:
         self.token = self.keys['discord']
 
         self.openai_client = openai.OpenAI(api_key = self.keys['openai'])
-        self.gpt_resp_history = {}
+        self.gpt_resp_history = []
 
         self.lol = lolManager(self.keys["riot"], f"{self.configDir}/summonerIDs.json")
 
@@ -38,7 +38,6 @@ class Frig:
                          "!commands":self.help_resp,
                          "!cmds":self.help_resp,
                          "!gpt":self.gpt_resp,
-                         "!gpth":self.gpt_resp,
                          "!o1":self.o1_resp,
                          "!dune":self.dune_resp,
                          "!rps":self.rps_resp,
@@ -108,7 +107,6 @@ class Frig:
 
     def openai_resp(self, model, msg):
         print(f"{bold}{gray}[GPT]: {endc}{yellow}text completion requested{endc}")
-        self.send('. . .')
         print(f"{bold}{gray}[{model}]: {endc}{yellow}text completion requested{endc}")
         prompt = msg['content'].replace("!gpt", "").strip()
         try:
@@ -126,12 +124,11 @@ class Frig:
             return "https://tenor.com/view/bkrafty-bkraftyerror-bafty-error-gif-25963379"
 
     def gpt_resp(self, msg):
+        self.send('. . .')
         return self.openai_resp("gpt-4o", msg)
     def o1_resp(self, msg):
+        self.send('. . .')
         return self.openai_resp("o1-preview", msg)
-    
-
-
 
     def get_dalle3_link(self, msg, style='vivid', quality='hd'):
         print(f"{bold}{gray}[DALLE]: {endc}{yellow}image generation requested{endc}")
@@ -306,16 +303,16 @@ class Frig:
     def get_response_to_new_msg(self, msg): # determines how to respond to a newly detected message. 
         body = msg["content"].lstrip()
         if body.startswith("!"):
-            command = body.split(" ")[0]
+            command_name = body.split(" ")[0]
             try:
-                print(f"{bold}{gray}[FRIG]: {endc}{yellow} command found: {command}{endc}")
-                return self.commands[command](msg)
+                print(f"{bold}{gray}[FRIG]: {endc}{yellow} command found: {command_name}{endc}")
+                return self.commands[command_name](msg)
             except KeyError as e:
-                print(f"{bold}{gray}[FRIG]: {endc}{red} unknown command '{command}' was called:\n{e}{endc}")
-                return f"command '{command}' not recognized"
+                print(f"{bold}{gray}[FRIG]: {endc}{red} unknown command '{command_name}' was called:\n{e}{endc}")
+                return f"command '{command_name}' not recognized"
             except Exception as e:
-                print(f"{bold}{gray}[FRIG]: {endc}{red} known command '{command}' failed with exception:\n{e}{endc}")
-                return f"command '{command}' failed with exception:\n```ansi\n{e}\n```"
+                print(f"{bold}{gray}[FRIG]: {endc}{red} known command '{command_name}' failed with exception:\n{e}{endc}")
+                return f"command '{command_command}' failed with exception:\n```ansi\n{e}\n```"
         else:
             return self.echo_resp(body)
 
