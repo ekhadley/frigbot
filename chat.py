@@ -44,16 +44,16 @@ class ChatManager:
                 time.sleep(1)
         return f"Completion failed."
 
-    def formatMessages(self, ChatCtx) -> str: # given a list of messages, we format them and include as many as possible while remaining under the maximum.
+    def formatMessages(self, ChatCtx, tail = "") -> str: # given a list of messages, we format them and include as many as possible while remaining under the maximum.
         ctx = "\n"
         for msg in ChatCtx:
             fmt = formatMsg(msg)
             if len(fmt) + len(ctx) <= self.ctx_str_len_max:
                 ctx = fmt + "\n" + ctx
             else:
-                return ctx
-        return ctx
-
+                return ctx + tail
+        return ctx + tail
+    
 if __name__ == '__main__':
     #frig = Frig(keypath="/home/ek/frigkeys.json", configDir= "/home/ek/wgmn/frigbot/config", chatid=972938534661009519 )
     frig = Frig(keypath="/home/ek/frigkeys.json", configDir= "/home/ek/wgmn/frigbot/config", chatid=551246526924455937 )

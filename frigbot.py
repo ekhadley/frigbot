@@ -59,6 +59,7 @@ class Frig:
             "!coin": self.coinflip_resp,
             "!coinflip": self.coinflip_resp,
             "!sus": self.sus_resp,
+            "!imposter": self.imposter_resp,
         }
 
         self.echo_resps = [ # the static repsonse messages for trigger words which I term "echo" responses
@@ -125,6 +126,21 @@ class Frig:
         print(f"completing on chat context: '{repr(chat_ctx)}'")
         print(f"{bold}{gray}[SUS]: {endc}{yellow}chat history formatted{endc}")
         completion = self.chatter.getCompletion(chat_ctx)
+        print(f"{bold}{gray}[SUS]: {endc}{green}continuation succesfully generated{endc}")
+        return completion.split("\n")
+    def imposter_resp(self, msg, **kwargs):
+        try:
+            imposter = msg['content'].split(" ")[1]
+        except Exception:
+            imposter = ""
+        print(f"{bold}{gray}[SUS]: {endc}{yellow}ai continuation requested{endc}")
+        chat_history = self.getLatestMsg(num_messages=25)
+        chat_history = [msg for msg in chat_history if "!imposter" not in msg['content'] and "!sus" not in msg['content']]
+        print(f"{bold}{gray}[SUS]: {endc}{yellow}chat history succesfully recorded{endc}")
+        chat_ctx = self.chatter.formatMessages(chat_history, tail=f"{imposter}: ")
+        print(f"completing on chat context: '{repr(chat_ctx)}'")
+        print(f"{bold}{gray}[SUS]: {endc}{yellow}chat history formatted{endc}")
+        completion = f"{imposter}: " + self.chatter.getCompletion(chat_ctx)
         print(f"{bold}{gray}[SUS]: {endc}{green}continuation succesfully generated{endc}")
         return completion.split("\n")
 
