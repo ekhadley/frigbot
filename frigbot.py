@@ -8,6 +8,7 @@ import openai
 
 from ytTracker import ytChannelTracker
 from lolManager import lolManager
+from chat import ChatManager
 
 from utils import red, endc, yellow, bold, cyan, gray, green, aendc, rankColors, abold
 from utils import loadjson, contains_scrambled
@@ -28,6 +29,8 @@ class Frig:
         self.gpt_resp_history = []
 
         self.lol = lolManager(self.keys["riot"], f"{self.configDir}/summonerIDs.json")
+
+        self.chatter = ChatManager(self.keys['runpod'])
 
         self.trackedChannels = []
         self.addNewTrackedChannel("femboy fishing", "UCqq5t2vi_G753e19j6U-Ypg", "femboyFishing.json")
@@ -55,6 +58,7 @@ class Frig:
             "!dalle":self.dalle_vivid_resp,
             "!coin": self.coinflip_resp,
             "!coinflip": self.coinflip_resp,
+            "!sus": self.sus_resp,
         }
 
         self.echo_resps = [ # the static repsonse messages for trigger words which I term "echo" responses
@@ -107,8 +111,24 @@ class Frig:
     def itysl_reference_resp(self, query="itysl", num=500):
         return self.randomgif(query, num)
 
+    def sus_resp(self, msg, **kwargs):
+        try:
+            history_len = int(msg['content'].split(" ")[1])
+        except Exception:
+            history_len = 50
+        print(f"{bold}{gray}[SUS]: {endc}{yellow}ai continuation requested{endc}")
+        history_len = min(max(2, history_len), 100)
+        chat_history = self.getLatestMsg(num_messages=history_len)
+        chat_history = [msg for msg in chat_history if "!sus" not in msg['content']]
+        print(f"{bold}{gray}[SUS]: {endc}{yellow}chat history succesfully recorded{endc}")
+        chat_ctx = self.chatter.formatMessages(chat_history)
+        print(f"completing on chat context: '{repr(chat_ctx)}'")
+        print(f"{bold}{gray}[SUS]: {endc}{yellow}chat history formatted{endc}")
+        completion = self.chatter.getCompletion(chat_ctx)
+        print(f"{bold}{gray}[SUS]: {endc}{green}continuation succesfully generated{endc}")
+        return completion.split("\n")
+
     def openai_resp(self, model, msg):
-        print(f"{bold}{gray}[GPT]: {endc}{yellow}text completion requested{endc}")
         print(f"{bold}{gray}[{model}]: {endc}{yellow}text completion requested{endc}")
         prompt = msg['content'].replace("!gpt", "").strip()
         try:
@@ -169,7 +189,8 @@ class Frig:
             "!dallen": "Generates an image using DALL-E in 'natural' style.",
             "!dalle": "Generates an image using DALL-E in 'vivid' style.",
             "!coin": "Flips a coin.",
-            "!coinflip": "Alias for !coin."
+            "!coinflip": "Alias for !coin.",
+            "!sus": "based on the last ~100 messages, generate an ai continuation of the conversation"
         }
         resp = "Available commands:"
         for cmd, desc in command_descriptions.items():
@@ -309,7 +330,7 @@ class Frig:
                 return f"command '{command_name}' not recognized"
             except Exception as e:
                 print(f"{bold}{gray}[FRIG]: {endc}{red} known command '{command_name}' failed with exception:\n{e}{endc}")
-                return f"command '{command_command}' failed with exception:\n```ansi\n{e}\n```"
+                return f"command '{command_name}' failed with exception:\n```ansi\n{e}\n```"
         else:
             return self.echo_resp(body)
 
