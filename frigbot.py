@@ -34,33 +34,33 @@ class Frig:
         self.addNewTrackedChannel("femboy physics", "UCTE3WPc1oFdNYT8SnZCQW5w", "femboyPhysics.json")
         
 
-        self.commands = {"!help":self.help_resp, # a dict of associations between commands (prefaced with a '!') and the functions they call to generate responses.
-                         "!commands":self.help_resp,
-                         "!cmds":self.help_resp,
-                         "!gpt":self.gpt_resp,
-                         "!o1":self.o1_resp,
-                         "!dune":self.dune_resp,
-                         "!rps":self.rps_resp,
-                         "!fish":self.trackedChannels[0].forceCheckAndReport,
-                         "!ttfish":self.trackedChannels[0].ttcheck,
-                         "!physics":self.trackedChannels[1].forceCheckAndReport,
-                         "!ttphysics":self.trackedChannels[1].ttcheck,
-                         "!gif":self.random_gif_resp,
-                         "!roll":self.roll_resp,
-                         "!lp":self.lp_resp,
-                         "!piggies":self.group_lp_resp,
-                         "!registeredsexoffenders":self.lol.list_known_summoners,
-                         "!dallen":self.dalle_natural_resp,
-                         "!dalle":self.dalle_vivid_resp,
-                         "!coin": self.coinflip_resp,
-                         "!coinflip": self.coinflip_resp,
-                         }
+        self.commands = {
+            "!help":self.help_resp, # a dict of associations between commands (prefaced with a '!') and the functions they call to generate responses.
+            "!commands":self.help_resp,
+            "!cmds":self.help_resp,
+            "!gpt":self.gpt_resp,
+            "!o1":self.o1_resp,
+            "!dune":self.dune_resp,
+            "!rps":self.rps_resp,
+            "!fish":self.trackedChannels[0].forceCheckAndReport,
+            "!ttfish":self.trackedChannels[0].ttcheck,
+            "!physics":self.trackedChannels[1].forceCheckAndReport,
+            "!ttphysics":self.trackedChannels[1].ttcheck,
+            "!gif":self.random_gif_resp,
+            "!roll":self.roll_resp,
+            "!lp":self.lp_resp,
+            "!piggies":self.group_lp_resp,
+            "!registeredsexoffenders":self.lol.list_known_summoners,
+            "!dallen":self.dalle_natural_resp,
+            "!dalle":self.dalle_vivid_resp,
+            "!coin": self.coinflip_resp,
+            "!coinflip": self.coinflip_resp,
+        }
 
         self.echo_resps = [ # the static repsonse messages for trigger words which I term "echo" responses
-                "This computer is shared with others including parents. This is a parent speaking to you to now. Not sure what this group is up to. I have told my son that role playing d and d games are absolutely forbidden in out household. We do not mind him having online friendships with local people that he knows for legitimate purposes. Perhaps this is an innocent group. But, we expect transparency in our son's friendships and acquaintances. If you would like to identify yourself now and let me know what your purpose for this platform is this is fine. You are welcome to do so.",
-                           
-                ["Do not go gentle into that good juckyard.", "Tetus should burn and rave at close of day.", "Rage, rage against the dying of the gamings.", "Though wise men at their end know gaming is right,", "Becuase their plays had got no karma they", "Do not go gentle into that good juckyard"]
-                           ]
+            "This computer is shared with others including parents. This is a parent speaking to you to now. Not sure what this group is up to. I have told my son that role playing d and d games are absolutely forbidden in out household. We do not mind him having online friendships with local people that he knows for legitimate purposes. Perhaps this is an innocent group. But, we expect transparency in our son's friendships and acquaintances. If you would like to identify yourself now and let me know what your purpose for this platform is this is fine. You are welcome to do so.",
+            ["Do not go gentle into that good juckyard.", "Tetus should burn and rave at close of day.", "Rage, rage against the dying of the gamings.", "Though wise men at their end know gaming is right,", "Becuase their plays had got no karma they", "Do not go gentle into that good juckyard"]
+        ]
 
         self.echoes = {"nefarious":self.echo_resps[0], # these are the trigger words and their associated echo
                        "avatars":self.echo_resps[0],
@@ -80,10 +80,12 @@ class Frig:
                 data={"content":str(msg)},
                 headers={"Authorization":self.token}
             ).text
-    def get_message(self):
-        url = f"{self.url}channels/{self.chatid}/messages?limit=1"
+    def getLatestMsg(self, num_messages=1):
+        url = f"{self.url}channels/{self.chatid}/messages?limit={num_messages}"
         res = requests.get(url, headers={"Authorization":self.token}).json()
-        return res[0] if isinstance(res, list) else res
+        #return res[0] if isinstance(res, list) else res
+        #print(res)
+        return res[0] if len(res) == 1 else res
 
     def coinflip_resp(self, *args, **kwargs):
         return random.choice(['heads', 'tails'])
@@ -267,17 +269,12 @@ class Frig:
         resp += "```"
         return resp
 
-
-    def get_last_msg(self): # reads the most recent message in the chat, returns a json
+    def getSelfMsg(self): # determines what the bot needs to send at any given moment based on new messages and timed messages
         try:
-            msg = self.get_message()
-            return msg
+            msg = self.getLatestMsg()
         except Exception as e:
             print(f"{bold}{gray}[FRIG]: {endc}{red}message read failed with exception:\n{e}{endc}")
             return None
-    
-    def get_self_msg(self): # determines what the bot needs to send at any given moment based on new messages and timed messages
-        msg = self.get_last_msg()
         msg_id, msg_author_id = msg["id"], msg["author"]["id"] 
         if msg_id != self.last_msg_id and msg_author_id != self.botname:
             author_global = msg["author"]["global_name"]
@@ -288,10 +285,10 @@ class Frig:
                     f.write(json.dumps(self.user_IDs, indent=4))
             
             self.last_msg_id = msg_id
-            return self.get_response_to_new_msg(msg)
-        return self.get_timed_messages()
+            return self.getResponseToNewMsg(msg)
+        return self.getTimedMessages()
 
-    def get_timed_messages(self): # checks for messages triggered by timing or external events
+    def getTimedMessages(self): # checks for messages triggered by timing or external events
         reports = []
         for channel in self.trackedChannels:
             if channel.checkLatestUpload():
@@ -300,7 +297,7 @@ class Frig:
             return "" 
         return reports
 
-    def get_response_to_new_msg(self, msg): # determines how to respond to a newly detected message. 
+    def getResponseToNewMsg(self, msg): # determines how to respond to a newly detected message. 
         body = msg["content"].lstrip()
         if body.startswith("!"):
             command_name = body.split(" ")[0]
@@ -330,7 +327,7 @@ class Frig:
         print(bold, cyan, "\nFrigBot started!", endc)
         while 1:
             try:
-                resp = self.get_self_msg()
+                resp = self.getSelfMsg()
                 self.send(resp)
                 self.wait()
             except Exception as e:
