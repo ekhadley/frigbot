@@ -1,0 +1,28 @@
+#!/bin/bash
+
+quiet=0
+project="/home/ek/wgmn/frigbot"
+name="run.py"
+pypath="/home/ek/.local/share/virtualenvs/frigbot-2tqUTCBw/bin/python"
+
+
+if pgrep -f $name > /dev/null; then
+  echo "frig is already running."
+  exit 1
+fi
+
+test_flag=""
+for arg in "$@"; do
+  if [[ "$arg" == -* ]]; then
+     [[ "$arg" == *"q"* ]] && quiet=1
+     [[ "$arg" == *"t"* ]] && test_flag="-t"
+  fi
+done
+
+
+if [[ $quiet -eq 1 ]]; then
+  nohup $pypath $project/$name $test_flag > ~/frigout.log 2> ~/frigerr.log 2>&1 &
+  echo "running frig in background."
+else
+  $pypath $project/$name $test_flag
+fi
