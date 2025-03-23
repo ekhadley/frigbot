@@ -120,7 +120,7 @@ class Frig:
         print(f"{bold}{gray}[SUS]: {endc}{yellow}ai continuation requested{endc}")
         history_len = min(max(2, history_len), 100)
         chat_history = self.getLatestMsg(num_messages=history_len)
-        chat_history = [msg for msg in chat_history if "!sus" not in msg['content']]
+        chat_history = [msg for msg in chat_history if msg['author']['global_name'] != 'FriggBot2000' and "!sus" not in msg['content']]
         print(f"{bold}{gray}[SUS]: {endc}{yellow}chat history succesfully recorded{endc}")
         chat_ctx = self.chatter.formatMessages(chat_history)
         print(f"completing on chat context: '{repr(chat_ctx)}'")
@@ -135,7 +135,7 @@ class Frig:
             imposter = ""
         print(f"{bold}{gray}[SUS]: {endc}{yellow}ai continuation requested{endc}")
         chat_history = self.getLatestMsg(num_messages=25)
-        chat_history = [msg for msg in chat_history if "!imposter" not in msg['content'] and "!sus" not in msg['content']]
+        chat_history = [msg for msg in chat_history if msg['author']['global_name'] != 'FriggBot2000' and "!imposter" not in msg['content'] and "!sus" not in msg['content']]
         print(f"{bold}{gray}[SUS]: {endc}{yellow}chat history succesfully recorded{endc}")
         chat_ctx = self.chatter.formatMessages(chat_history, tail=f"{imposter}: ")
         print(f"completing on chat context: '{repr(chat_ctx)}'")
