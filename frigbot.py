@@ -14,15 +14,15 @@ from utils import red, endc, yellow, bold, cyan, gray, green, aendc, rankColors,
 from utils import loadjson, contains_scrambled
 
 class Frig:
-    def __init__(self, keypath, configDir, chatid):
+    def __init__(self, keypath, configDir, chat_id):
         self.last_msg_id = 0 # unique message id. Used to check if a new message has been already seen
         self.loop_delay = 1.0 # delay in seconds between checking for new mesages
-        self.chatid = chatid
+        self.chat_id = chat_id
         self.keypath = keypath
         self.configDir = configDir
         self.read_saved_state()
         
-        self.url = "https://discordapp.com/api/v9/"
+        self.url = "https://discordapp.com/api/v9"
         self.token = self.keys['discord']
 
         self.openai_client = openai.OpenAI(api_key = self.keys['openai'])
@@ -81,15 +81,20 @@ class Frig:
                 self.send(m)
         elif isinstance(msg, str) and msg != "":
             requests.post(
-                f"{self.url}channels/{self.chatid}/messages",
+                f"{self.url}/channels/{self.chat_id}/messages",
                 data={"content":str(msg)},
                 headers={"Authorization":self.token}
             ).text
+    def editMessage(self, message_id, new_content):
+        requests.patch(
+            f"{self.url}/channels/{self.chat_id}/messages/{message_id}",
+            data={"content": new_content},
+            headers={"Authorization": self.token}
+        )
     def getLatestMsg(self, num_messages=1):
-        url = f"{self.url}channels/{self.chatid}/messages?limit={num_messages}"
+        url = f"{self.url}/channels/{self.chat_id}/messages?limit={num_messages}"
         res = requests.get(url, headers={"Authorization":self.token}).json()
-        #return res[0] if isinstance(res, list) else res
-        #print(res)
+        print(red, res, endc)
         return res[0] if len(res) == 1 else res
 
     def coinflip_resp(self, *args, **kwargs):
