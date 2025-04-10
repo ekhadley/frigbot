@@ -45,7 +45,6 @@ def contains_scrambled(msg, key):
             return True
     return False
 
-
 def daterep(dat):
     return dat.strftime("%Y-%b-%d (%H:%M:%S)")
 
