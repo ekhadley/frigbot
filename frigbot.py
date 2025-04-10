@@ -8,14 +8,15 @@ import openai
 
 from ytTracker import ytChannelTracker
 from lolManager import lolManager
-from chat import ChatManager
+from chat import ChatManager, OpenAIRunner
 
-from utils import red, endc, yellow, bold, cyan, gray, green, aendc, rankColors, abold
+from utils import red, endc, yellow, bold, cyan, gray, green, aendc, rankColors, abold, purple
 from utils import loadjson, contains_scrambled
 
 class Frig:
     def __init__(self, keypath, configDir, chat_id):
         self.last_msg_id = 0 # unique message id. Used to check if a new message has been already seen
+        self.last_self_msg_id = 0
         self.loop_delay = 1.0 # delay in seconds between checking for new mesages
         self.chat_id = chat_id
         self.keypath = keypath
@@ -26,7 +27,8 @@ class Frig:
         self.token = self.keys['discord']
 
         self.openai_client = openai.OpenAI(api_key = self.keys['openai'])
-        self.gpt_resp_history = []
+        #self.openai_runner = OpenAIRunner(model_name = "gpt-4o", tools = ["web_search_preview"], client=self.openai_client, text_output_callback=self.editLastMessage)
+        self.openai_runner = OpenAIRunner(model_name = "chatgpt-4o-latest", tools = [], client=self.openai_client, text_output_callback=self.editLastMessage)
 
         self.lol = lolManager(self.keys["riot"], f"{self.configDir}/summonerIDs.json")
 
@@ -42,7 +44,6 @@ class Frig:
             "!commands":self.help_resp,
             "!cmds":self.help_resp,
             "!gpt":self.gpt_resp,
-            "!o1":self.o1_resp,
             "!dune":self.dune_resp,
             "!rps":self.rps_resp,
             "!fish":self.trackedChannels[0].forceCheckAndReport,
@@ -80,22 +81,87 @@ class Frig:
             for m in msg:
                 self.send(m)
         elif isinstance(msg, str) and msg != "":
-            requests.post(
+            send_resp = requests.post(
                 f"{self.url}/channels/{self.chat_id}/messages",
                 data={"content":str(msg)},
                 headers={"Authorization":self.token}
             ).text
+            resp_info = json.loads(send_resp)
+            self.last_self_msg_id = resp_info['id']
     def editMessage(self, message_id, new_content):
-        requests.patch(
+        resp = requests.patch(
             f"{self.url}/channels/{self.chat_id}/messages/{message_id}",
             data={"content": new_content},
             headers={"Authorization": self.token}
         )
+        return resp
+    def editLastMessage(self, new_content): return self.editMessage(self.last_self_msg_id, new_content)
     def getLatestMsg(self, num_messages=1):
         url = f"{self.url}/channels/{self.chat_id}/messages?limit={num_messages}"
         res = requests.get(url, headers={"Authorization":self.token}).json()
-        print(red, res, endc)
         return res[0] if len(res) == 1 else res
+    def getSelfMsg(self): # determines what the bot needs to send at any given moment based on new messages and timed messages
+        try:
+            msg = self.getLatestMsg()
+        except Exception as e:
+            print(f"{bold}{gray}[FRIG]: {endc}{red}message read failed with exception:\n{e}{endc}")
+            return None
+        msg_id, msg_author_id = msg["id"], msg["author"]["id"] 
+        if msg_id != self.last_msg_id and msg_author_id != self.botname:
+            author_global = msg["author"]["global_name"]
+            if author_global not in self.user_IDs:
+                print(f"{bold}{gray}[FRIG]: {endc}{yellow}new username '{msg['author']['global_name']}' detected. storing their ID. {endc}")
+                self.user_IDs[msg["author"]["global_name"]] = msg_author_id
+                with open(f"{self.configDir}/userIDs.json", "w") as f:
+                    f.write(json.dumps(self.user_IDs, indent=4))
+            
+            self.last_msg_id = msg_id
+            return self.getResponseToNewMsg(msg)
+        return self.getTimedMessages()
+    def getTimedMessages(self): # checks for messages triggered by timing or external events
+        reports = []
+        for channel in self.trackedChannels:
+            if channel.checkLatestUpload():
+                reports.append(channel.reportVid()) # broken in the case where this loop should report multiple new videos. ugh.
+        if len(reports) == 0:
+            return "" 
+        return reports
+    def getResponseToNewMsg(self, msg): # determines how to respond to a newly detected message. 
+        body = msg["content"].lstrip()
+        if body.startswith("!"):
+            command_name = body.split(" ")[0]
+            print(f"{bold}{gray}[FRIG]: {endc}{yellow} command found: {command_name}{endc}")
+            if command_name in self.commands.keys():
+                try:
+                    return self.commands[command_name](msg)
+                except Exception as e:
+                    print(f"{bold}{gray}[FRIG]: {endc}{red} known command '{command_name}' failed with exception:\n{e}{endc}")
+                    return f"command '{command_name}' failed with exception:\n```ansi\n{e}\n```"
+            else:
+                print(f"{bold}{gray}[FRIG]: {endc}{red} unknown command '{command_name}' was called:\n{e}{endc}")
+                return f"command '{command_name}' not recognized"
+        else:
+            return self.echo_resp(body)
+    def echo_resp(self, body, reference_gif_prob=0.1): # determines which, if any, (non command) response to respond with. first checks phrases then other conditionals
+        bsplit = body.split(" ")
+        for e in self.echoes:
+            if e in bsplit:
+                print(f"{bold}{gray}[FRIG]: {endc}{gray} issuing echo for '{e}'{endc}")
+                return self.echoes[e]
+        if (random.uniform(0, 1) < reference_gif_prob) and contains_scrambled(body, "itysl"):
+                return self.itysl_reference_resp()
+        return ""
+    def runloop(self):
+        print(bold, cyan, "\nFrigBot started!", endc)
+        while 1:
+            try:
+                resp = self.getSelfMsg()
+                self.send(resp)
+                self.wait()
+            except Exception as e:
+                print(f"{red}, {bold}, [FRIG] CRASHED WITH EXCEPTION:\n{e}")
+                time.sleep(3)
+
 
     def coinflip_resp(self, *args, **kwargs):
         return random.choice(['heads', 'tails'])
@@ -149,30 +215,22 @@ class Frig:
         print(f"{bold}{gray}[SUS]: {endc}{green}continuation succesfully generated{endc}")
         return completion.split("\n")
 
-    def openai_resp(self, model, msg):
-        print(f"{bold}{gray}[{model}]: {endc}{yellow}text completion requested{endc}")
-        prompt = msg['content'].replace("!gpt", "").strip()
-        try:
-            completion = self.openai_client.chat.completions.create(model=model, messages=[{"role": "user", "content": prompt}])
-            print(completion)
-            resp = completion.choices[0].message.content.replace("\n\n", "\n")
-            if len(resp) >= 2000:
-                nsplit = math.ceil(len(resp)/2000)
-                interval = len(resp)//nsplit
-                resp = [resp[i*interval:(i+1)*interval] for i in range(nsplit)]
-            print(f"{bold}{gray}[{model}]: {endc}{green}text completion generated {endc}")
-            return resp
-        except Exception as e:
-            print(f"{bold}{gray}[{model}]: {endc}{red}text completion failed with exception:\n{e}{endc}")
-            return "https://tenor.com/view/bkrafty-bkraftyerror-bafty-error-gif-25963379"
-
     def gpt_resp(self, msg):
         self.send('. . .')
-        #return self.openai_resp("gpt-4o", msg)
-        return self.openai_resp("chatgpt-4o-latest", msg)
-    def o1_resp(self, msg):
-        self.send('. . .')
-        return self.openai_resp("o1-preview", msg)
+        input = msg['content'].replace("!gpt", "")
+        self.openai_runner.addUserMessage(input)
+        last_blocked = 0
+        with self.openai_runner.getStream() as stream:
+            for i, event in enumerate(stream):
+                if event.type == "response.output_text.delta":
+                    content = event.snapshot
+                    if i%10 == 0:
+                        self.editLastMessage(content)
+        while not self.editLastMessage(content).ok:
+            time.sleep(0.3)
+        self.openai_runner.clearMessages()
+        return ""
+
 
     def get_dalle3_link(self, msg, style='vivid', quality='hd'):
         print(f"{bold}{gray}[DALLE]: {endc}{yellow}image generation requested{endc}")
@@ -311,71 +369,6 @@ class Frig:
             resp += "\n"
         resp += "```"
         return resp
-
-    def getSelfMsg(self): # determines what the bot needs to send at any given moment based on new messages and timed messages
-        try:
-            msg = self.getLatestMsg()
-        except Exception as e:
-            print(f"{bold}{gray}[FRIG]: {endc}{red}message read failed with exception:\n{e}{endc}")
-            return None
-        msg_id, msg_author_id = msg["id"], msg["author"]["id"] 
-        if msg_id != self.last_msg_id and msg_author_id != self.botname:
-            author_global = msg["author"]["global_name"]
-            if author_global not in self.user_IDs:
-                print(f"{bold}{gray}[FRIG]: {endc}{yellow}new username '{msg['author']['global_name']}' detected. storing their ID. {endc}")
-                self.user_IDs[msg["author"]["global_name"]] = msg_author_id
-                with open(f"{self.configDir}/userIDs.json", "w") as f:
-                    f.write(json.dumps(self.user_IDs, indent=4))
-            
-            self.last_msg_id = msg_id
-            return self.getResponseToNewMsg(msg)
-        return self.getTimedMessages()
-
-    def getTimedMessages(self): # checks for messages triggered by timing or external events
-        reports = []
-        for channel in self.trackedChannels:
-            if channel.checkLatestUpload():
-                reports.append(channel.reportVid()) # broken in the case where this loop should report multiple new videos. ugh.
-        if len(reports) == 0:
-            return "" 
-        return reports
-
-    def getResponseToNewMsg(self, msg): # determines how to respond to a newly detected message. 
-        body = msg["content"].lstrip()
-        if body.startswith("!"):
-            command_name = body.split(" ")[0]
-            try:
-                print(f"{bold}{gray}[FRIG]: {endc}{yellow} command found: {command_name}{endc}")
-                return self.commands[command_name](msg)
-            except KeyError as e:
-                print(f"{bold}{gray}[FRIG]: {endc}{red} unknown command '{command_name}' was called:\n{e}{endc}")
-                return f"command '{command_name}' not recognized"
-            except Exception as e:
-                print(f"{bold}{gray}[FRIG]: {endc}{red} known command '{command_name}' failed with exception:\n{e}{endc}")
-                return f"command '{command_name}' failed with exception:\n```ansi\n{e}\n```"
-        else:
-            return self.echo_resp(body)
-
-    def echo_resp(self, body, reference_gif_prob=0.1): # determines which, if any, (non command) response to respond with. first checks phrases then other conditionals
-        bsplit = body.split(" ")
-        for e in self.echoes:
-            if e in bsplit:
-                print(f"{bold}{gray}[FRIG]: {endc}{gray} issuing echo for '{e}'{endc}")
-                return self.echoes[e]
-        if (random.uniform(0, 1) < reference_gif_prob) and contains_scrambled(body, "itysl"):
-                return self.itysl_reference_resp()
-        return ""
-
-    def runloop(self):
-        print(bold, cyan, "\nFrigBot started!", endc)
-        while 1:
-            try:
-                resp = self.getSelfMsg()
-                self.send(resp)
-                self.wait()
-            except Exception as e:
-                print(f"{red}, {bold}, [FRIG] CRASHED WITH EXCEPTION:\n{e}")
-                time.sleep(3)
 
     def write_rps_scores(self):
         with open(f"{self.configDir}/rpsScores.json", "w") as f:

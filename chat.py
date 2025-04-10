@@ -2,8 +2,60 @@ import time
 import requests
 import json
 
+from collections.abc import Callable
+import openai
+
 #from frigbot import Frig
+
+class OpenAIRunner:
+    def __init__(
+            self,
+            model_name: str,
+            #asst_id: str, # chatgpt-4o-latest cannot be used in an assistant, or with tools. otherwise i would use assistants.
+            tools: list[str], # only supports builtin tools rn
+            client: openai.OpenAI,
+            text_output_callback: Callable|None = None,
+            tool_request_callback: Callable|None = None,
+            tool_submit_callback: Callable|None = None,
+            snapshot = True # determines wether the text callback receives the current text delta or the snapshot of it
+        ):
+        self.model_name = model_name
+        self.tools = [{'type': tool} for tool in tools]
+        self.client = client
+        #self.asst_id = asst_id
+        self.snapshot = True
+
+        self.text_output_callback = text_output_callback
+        self.tool_request_callback = tool_request_callback
+        self.tool_submit_callback = tool_submit_callback
+
+        self.messages = [] # simple list of messages like {'role': 'user', 'content':'blahblah'}
+
+    def clearMessages(self) -> None:
+        self.messages = []
     
+    def addUserMessage(self, content:str) -> None:
+        self.messages.append({'role': 'user', 'content': content})
+
+    def getStream(self):
+        return self.client.responses.stream(
+                model = self.model_name,
+                tools = self.tools,
+                input = self.messages
+            )
+
+    def run(self) -> str:
+        with self.getStream() as stream:
+            for event in stream:
+                #print(event)
+                if event.type == "response.output_text.delta":
+                    text = event.snapshot if self.snapshot else event.delta
+                    print(text)
+                    if self.text_output_callback:
+                        self.text_output_callback(text)
+        return text
+
+
 def formatMsg(msg):
     #if isinstance(msg, list): return "".join([formatMsg(m)+"\n" for m in msg[::-1]])
     return f"{msg['author']['global_name']}: {msg['content']}"
