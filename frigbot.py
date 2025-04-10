@@ -168,7 +168,8 @@ class Frig:
 
     def gpt_resp(self, msg):
         self.send('. . .')
-        return self.openai_resp("gpt-4o", msg)
+        #return self.openai_resp("gpt-4o", msg)
+        return self.openai_resp("chatgpt-4o-latest", msg)
     def o1_resp(self, msg):
         self.send('. . .')
         return self.openai_resp("o1-preview", msg)
