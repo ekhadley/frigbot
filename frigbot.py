@@ -5,6 +5,7 @@ import time
 import json
 import requests
 import openai
+import pyicloud
 
 from ytTracker import ytChannelTracker
 from lolManager import lolManager
@@ -37,7 +38,6 @@ class Frig:
         self.trackedChannels = []
         self.addNewTrackedChannel("femboy fishing", "UCqq5t2vi_G753e19j6U-Ypg", "femboyFishing.json")
         self.addNewTrackedChannel("femboy physics", "UCTE3WPc1oFdNYT8SnZCQW5w", "femboyPhysics.json")
-        
 
         self.commands = {
             "!help":self.help_resp, # a dict of associations between commands (prefaced with a '!') and the functions they call to generate responses.
@@ -61,6 +61,7 @@ class Frig:
             "!coinflip": self.coinflip_resp,
             "!sus": self.sus_resp,
             "!imposter": self.imposter_resp,
+            #"!locate_xylotile": self.locate_xylotile_resp
         }
 
         self.echo_resps = [ # the static repsonse messages for trigger words which I term "echo" responses
@@ -416,6 +417,13 @@ class Frig:
             return str(random.randint(1, m))
         except Exception:
             return "choose an int > 0"
+
+    def locate_xylotile_resp(self, *args, **kwargs):
+        icloud = pyicloud.PyiCloudService("william.carrillo0415@icloud.com", self.keys['xylotile_icloud'])
+        phone = icloud.iphone
+        location = phone.location()
+        link = f"https://maps.google.com/?q={location['latitude']},{location['longitude']}"
+        return ["Xylotile is currently here:", link]
 
     def wait(self):
         time.sleep(self.loop_delay)
