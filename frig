@@ -3,7 +3,7 @@
 quiet=0
 project="/home/ek/wgmn/frigbot"
 name="run.py"
-pypath="/home/ek/.local/share/virtualenvs/frigbot-2tqUTCBw/bin/python"
+pypath="/home/ek/.local/share/virtualenvs/frigbot-QxnLY2ja/bin/python"
 
 
 if pgrep -f $name > /dev/null; then
