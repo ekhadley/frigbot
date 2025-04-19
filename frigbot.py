@@ -1,4 +1,3 @@
-import math
 import random
 import datetime
 import time
@@ -6,13 +5,15 @@ import json
 import requests
 import openai
 import pyicloud
+import traceback
+from typing import Literal, Optional
 
 from ytTracker import ytChannelTracker
 from lolManager import lolManager
-from chat import ChatManager, OpenAIRunner
+from chat import ChatManager
 
 from utils import red, endc, yellow, bold, cyan, gray, green, aendc, rankColors, abold, purple
-from utils import loadjson, contains_scrambled
+from utils import loadjson, contains_scrambled, split_resp
 
 class Frig:
     def __init__(self, keypath, configDir, chat_id):
@@ -78,18 +79,28 @@ class Frig:
                        "juckyard":self.echo_resps[1]
                        }
         
-    def send(self, msg): # sends a string/list of strings as a message/messages in the chat
+    def send(self, msg, reply = None): # sends a string/list of strings as a message/messages in the chat. optinally replies to a previous message.
         if isinstance(msg, list):
             for m in msg:
-                self.send(m)
+                self.send(m, reply)
         elif isinstance(msg, str) and msg != "":
+            if reply is None:
+                post_data = { "content": str(msg) }
+            else:
+                post_data = {
+                    'content': str(msg),
+                    'message_reference': {
+                        'channel_id':reply['channel_id'],
+                        'message_id':reply['message_id'],
+                    }
+                }
             send_resp = requests.post(
                 f"{self.url}/channels/{self.chat_id}/messages",
-                data={"content":str(msg)},
-                headers={"Authorization":self.token}
+                json = post_data,
+                headers={ "Authorization":self.token }
             ).text
-            resp_info = json.loads(send_resp)
-            self.last_self_msg_id = resp_info['id']
+            #resp_info = json.loads(send_resp)
+            #self.last_self_msg_id = resp_info['id']
     def editMessage(self, message_id, new_content):
         resp = requests.patch(
             f"{self.url}/channels/{self.chat_id}/messages/{message_id}",
@@ -97,7 +108,7 @@ class Frig:
             headers={"Authorization": self.token}
         )
         return resp
-    def editLastMessage(self, new_content): return self.editMessage(self.last_self_msg_id, new_content)
+    #def editLastMessage(self, new_content): return self.editMessage(self.last_self_msg_id, new_content)
     def getLatestMsg(self, num_messages=1):
         url = f"{self.url}/channels/{self.chat_id}/messages?limit={num_messages}"
         res = requests.get(url, headers={"Authorization":self.token}).json()
@@ -137,7 +148,10 @@ class Frig:
                 try:
                     return self.commands[command_name](msg)
                 except Exception as e:
-                    print(f"{bold}{gray}[FRIG]: {endc}{red} known command '{command_name}' failed with exception:\n{e}{endc}")
+                    #print(f"{bold}{gray}[FRIG]: {endc}{red} known command '{command_name}' failed with exception:\n{e}{endc}")
+                    print(f"{bold}{gray}[FRIG]: {endc}{red} known command '{command_name}' failed")
+                    traceback.print_exc()
+                    print(endc)
                     return f"command '{command_name}' failed with exception:\n```ansi\n{e}\n```"
             else:
                 print(f"{bold}{gray}[FRIG]: {endc}{red} unknown command '{command_name}' was called:\n{e}{endc}")
@@ -217,53 +231,35 @@ class Frig:
         print(f"{bold}{gray}[SUS]: {endc}{green}continuation succesfully generated{endc}")
         return completion.split("\n")
 
-    def openai_resp(self, model, msg, search=False):
+    def openai_resp(self, model, prompt, search=False) -> str:
          print(f"{bold}{gray}[{model}]: {endc}{yellow}text completion requested{endc}")
-         prompt = msg['content'].replace("!gpt", "").strip()
          try:
              resp = self.openai_client.responses.create(
                      model = model,
-                     instructions = "You are an assistant integrated in a Discord chatbot named FriggBot2000. When using markdown, only include the Discord-supported subset.",
+                     instructions = "You are an assistant integrated in a Discord chatbot named FriggBot2000. When using markdown, you may use bullet points and headers, but do not use tables or level 4 headers (####). You should generally prefer briefer answers, suitable for a shared group chat. But fully answering complex queries supercedes this. Discord messages can only have about 250 words, so split up long responses accordingly using the token <split>",
                      tools=[{"type": "web_search_preview"}] if search else [],
                      input = prompt
                      )
              resp = resp.output_text.replace("\n\n", "\n")
-             if len(resp) >= 2000:
-                 nsplit = math.ceil(len(resp)/2000)
-                 interval = len(resp)//nsplit
-                 resp = [resp[i*interval:(i+1)*interval] for i in range(nsplit)]
              print(f"{bold}{gray}[{model}]: {endc}{green}text completion generated {endc}")
              return resp
          except Exception as e:
              print(f"{bold}{gray}[{model}]: {endc}{red}text completion failed with exception:\n{e}{endc}")
              return "https://tenor.com/view/bkrafty-bkraftyerror-bafty-error-gif-25963379"
     def gpt_search_resp(self, msg):
+        prompt = msg['content'].replace("!gpt", "").strip()
         self.send('. . .')
-        #return self.openai_resp("chatgpt-4o-latest", msg)
-        return self.openai_resp("gpt-4o", msg, search=True)
+        resp = self.openai_resp("gpt-4o", prompt, search=True).strip().split("<split>")
+        #resp = split_resp(resp)
+        self.send(resp, reply={'channel_id': msg['channel_id'], 'message_id': msg['id']})
     def gpt_resp(self, msg):
+        prompt = msg['content'].replace("!gpt", "").strip()
         self.send('. . .')
-        #return self.openai_resp("chatgpt-4o-latest", msg)
-        return self.openai_resp("chatgpt-4o-latest", msg, search=False)
+        resp = self.openai_resp("chatgpt-4o-latest", prompt, search=False).strip().split("<split>")
+        #resp = split_resp(resp)
+        self.send(resp, reply={'channel_id': msg['channel_id'], 'message_id': msg['id']})
 
-    def _gpt_resp(self, msg):
-        self.send('. . .')
-        input = msg['content'].replace("!gpt", "")
-        self.openai_runner.addUserMessage(input)
-        last_blocked = 0
-        with self.openai_runner.getStream() as stream:
-            for i, event in enumerate(stream):
-                if event.type == "response.output_text.delta":
-                    content = event.snapshot
-                    if i%10 == 0:
-                        self.editLastMessage(content)
-        while not self.editLastMessage(content).ok:
-            time.sleep(0.3)
-        self.openai_runner.clearMessages()
-        return ""
-
-
-    def get_dalle3_link(self, msg, style='vivid', quality='hd'):
+    def get_dalle3_link(self, msg, style:Literal['vivid', 'natural'], quality:Literal['standard', 'hd']):
         print(f"{bold}{gray}[DALLE]: {endc}{yellow}image generation requested{endc}")
         self.send('. . .')
         try:
@@ -276,8 +272,8 @@ class Frig:
             print(f"{bold}{gray}[DALLE]: {endc}{red}text completion failed with exception:\n{e}{endc}")
             if e.code == 'content_policy_violation':
                 return "no porn!!!"
-    def dalle_vivid_resp(self, msg): return self.get_dalle3_link(msg, style='vivid')
-    def dalle_natural_resp(self, msg): return self.get_dalle3_link(msg, style='natural')
+    def dalle_vivid_resp(self, msg): return self.get_dalle3_link(msg, style='vivid', quality='standard')
+    def dalle_natural_resp(self, msg): return self.get_dalle3_link(msg, style='natural', quality='standard')
 
     def help_resp(self, msg):
         command_descriptions = {

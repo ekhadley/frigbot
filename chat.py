@@ -5,55 +5,8 @@ import json
 from collections.abc import Callable
 import openai
 
-#from frigbot import Frig
 
-class OpenAIRunner:
-    def __init__(
-            self,
-            model_name: str,
-            #asst_id: str, # chatgpt-4o-latest cannot be used in an assistant, or with tools. otherwise i would use assistants.
-            tools: list[str], # only supports builtin tools rn
-            client: openai.OpenAI,
-            text_output_callback: Callable|None = None,
-            tool_request_callback: Callable|None = None,
-            tool_submit_callback: Callable|None = None,
-            snapshot = True # determines wether the text callback receives the current text delta or the snapshot of it
-        ):
-        self.model_name = model_name
-        self.tools = [{'type': tool} for tool in tools]
-        self.client = client
-        #self.asst_id = asst_id
-        self.snapshot = True
 
-        self.text_output_callback = text_output_callback
-        self.tool_request_callback = tool_request_callback
-        self.tool_submit_callback = tool_submit_callback
-
-        self.messages = [] # simple list of messages like {'role': 'user', 'content':'blahblah'}
-
-    def clearMessages(self) -> None:
-        self.messages = []
-    
-    def addUserMessage(self, content:str) -> None:
-        self.messages.append({'role': 'user', 'content': content})
-
-    def getStream(self):
-        return self.client.responses.stream(
-                model = self.model_name,
-                tools = self.tools,
-                input = self.messages
-            )
-
-    def run(self) -> str:
-        with self.getStream() as stream:
-            for event in stream:
-                #print(event)
-                if event.type == "response.output_text.delta":
-                    text = event.snapshot if self.snapshot else event.delta
-                    print(text)
-                    if self.text_output_callback:
-                        self.text_output_callback(text)
-        return text
 
 
 def formatMsg(msg):
@@ -77,7 +30,7 @@ class ChatManager:
             "Content-Type": "application/json"
         }
 
-    def getCompletion(self, prompt:str, max_new_tokens = 100) -> str:
+    def getCompletion(self, prompt:str, max_new_tokens:int = 100) -> str:
         payload = { "input": { "prompt": prompt, "max_new_tokens": max_new_tokens } }
         request_response = requests.post(self.request_url, headers=self.headers, data=json.dumps(payload))
         if request_response.ok:
@@ -96,7 +49,7 @@ class ChatManager:
                 time.sleep(1)
         return f"Completion failed."
 
-    def formatMessages(self, ChatCtx, tail = "") -> str: # given a list of messages, we format them and include as many as possible while remaining under the maximum.
+    def formatMessages(self, ChatCtx:str, tail:str = "") -> str: # given a list of messages, we format them and include as many as possible while remaining under the maximum.
         ctx = "\n"
         for msg in ChatCtx:
             fmt = formatMsg(msg)
@@ -105,15 +58,3 @@ class ChatManager:
             else:
                 return ctx + tail
         return ctx + tail
-    
-if __name__ == '__main__':
-    #frig = Frig(keypath="/home/ek/frigkeys.json", configDir= "/home/ek/wgmn/frigbot/config", chatid=972938534661009519 )
-    frig = Frig(keypath="/home/ek/frigkeys.json", configDir= "/home/ek/wgmn/frigbot/config", chatid=551246526924455937 )
-
-    msgs = frig.getLatestMsg(num_messages = 100)
-    chatter = ChatManager(frig.keys['runpod'])
-    ctx = chatter.formatMessages(msgs)
-    print(ctx)
-    print(len(ctx))
-    print(chatter.getCompletion(ctx))
-
