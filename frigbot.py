@@ -223,6 +223,7 @@ class Frig:
          try:
              resp = self.openai_client.responses.create(
                      model = model,
+                     instructions = "You are an assistant integrated in a Discord chatbot named FriggBot2000. When using markdown, only include the Discord-supported subset.",
                      tools=[{"type": "web_search_preview"}] if search else [],
                      input = prompt
                      )
