@@ -29,7 +29,7 @@ class Frig:
 
         self.openai_client = openai.OpenAI(api_key = self.keys['openai'])
         #self.openai_runner = OpenAIRunner(model_name = "gpt-4o", tools = ["web_search_preview"], client=self.openai_client, text_output_callback=self.editLastMessage)
-        self.openai_runner = OpenAIRunner(model_name = "chatgpt-4o-latest", tools = [], client=self.openai_client, text_output_callback=self.editLastMessage)
+        #self.openai_runner = OpenAIRunner(model_name = "chatgpt-4o-latest", tools = [], client=self.openai_client, text_output_callback=self.editLastMessage)
 
         self.lol = lolManager(self.keys["riot"], f"{self.configDir}/summonerIDs.json")
 
@@ -44,6 +44,7 @@ class Frig:
             "!commands":self.help_resp,
             "!cmds":self.help_resp,
             "!gpt":self.gpt_resp,
+            "!gpts":self.gpt_search_resp,
             "!dune":self.dune_resp,
             "!rps":self.rps_resp,
             "!fish":self.trackedChannels[0].forceCheckAndReport,
@@ -216,12 +217,16 @@ class Frig:
         print(f"{bold}{gray}[SUS]: {endc}{green}continuation succesfully generated{endc}")
         return completion.split("\n")
 
-    def openai_resp(self, model, msg):
+    def openai_resp(self, model, msg, search=False):
          print(f"{bold}{gray}[{model}]: {endc}{yellow}text completion requested{endc}")
          prompt = msg['content'].replace("!gpt", "").strip()
          try:
-             completion = self.openai_client.chat.completions.create(model=model, messages=[{"role": "user", "content": prompt}])
-             resp = completion.choices[0].message.content.replace("\n\n", "\n")
+             resp = self.openai_client.responses.create(
+                     model = model,
+                     tools=[{"type": "web_search_preview"}] if search else [],
+                     input = prompt
+                     )
+             resp = resp.output_text.replace("\n\n", "\n")
              if len(resp) >= 2000:
                  nsplit = math.ceil(len(resp)/2000)
                  interval = len(resp)//nsplit
@@ -231,9 +236,14 @@ class Frig:
          except Exception as e:
              print(f"{bold}{gray}[{model}]: {endc}{red}text completion failed with exception:\n{e}{endc}")
              return "https://tenor.com/view/bkrafty-bkraftyerror-bafty-error-gif-25963379"
+    def gpt_search_resp(self, msg):
+        self.send('. . .')
+        #return self.openai_resp("chatgpt-4o-latest", msg)
+        return self.openai_resp("gpt-4o", msg, search=True)
     def gpt_resp(self, msg):
         self.send('. . .')
-        return self.openai_resp("chatgpt-4o-latest", msg)
+        #return self.openai_resp("chatgpt-4o-latest", msg)
+        return self.openai_resp("chatgpt-4o-latest", msg, search=False)
 
     def _gpt_resp(self, msg):
         self.send('. . .')
