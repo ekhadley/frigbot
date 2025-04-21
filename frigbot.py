@@ -6,14 +6,13 @@ import requests
 import openai
 import pyicloud
 import traceback
-from typing import Literal, Optional
+from typing import Literal
 
-from ytTracker import ytChannelTracker
 from lolManager import lolManager
 from chat import ChatManager
 
-from utils import red, endc, yellow, bold, cyan, gray, green, aendc, rankColors, abold, purple
-from utils import loadjson, contains_scrambled, split_resp
+from utils import red, endc, yellow, bold, cyan, gray, green, aendc, rankColors, abold
+from utils import loadjson
 
 class Frig:
     def __init__(self, keypath, configDir, chat_id):
@@ -24,21 +23,18 @@ class Frig:
         self.keypath = keypath
         self.configDir = configDir
         self.read_saved_state()
+
+        self.bot_name = "FriggBot20000"
+        self.id = "352226045228875786"
         
         self.url = "https://discordapp.com/api/v9"
         self.token = self.keys['discord']
 
         self.openai_client = openai.OpenAI(api_key = self.keys['openai'])
-        #self.openai_runner = OpenAIRunner(model_name = "gpt-4o", tools = ["web_search_preview"], client=self.openai_client, text_output_callback=self.editLastMessage)
-        #self.openai_runner = OpenAIRunner(model_name = "chatgpt-4o-latest", tools = [], client=self.openai_client, text_output_callback=self.editLastMessage)
 
         self.lol = lolManager(self.keys["riot"], f"{self.configDir}/summonerIDs.json")
 
         self.chatter = ChatManager(self.keys['runpod'])
-
-        self.trackedChannels = []
-        self.addNewTrackedChannel("femboy fishing", "UCqq5t2vi_G753e19j6U-Ypg", "femboyFishing.json")
-        self.addNewTrackedChannel("femboy physics", "UCTE3WPc1oFdNYT8SnZCQW5w", "femboyPhysics.json")
 
         self.commands = {
             "!help":self.help_resp, # a dict of associations between commands (prefaced with a '!') and the functions they call to generate responses.
@@ -46,12 +42,7 @@ class Frig:
             "!cmds":self.help_resp,
             "!gpt":self.gpt_resp,
             "!gpts":self.gpt_search_resp,
-            "!dune":self.dune_resp,
             "!rps":self.rps_resp,
-            "!fish":self.trackedChannels[0].forceCheckAndReport,
-            "!ttfish":self.trackedChannels[0].ttcheck,
-            "!physics":self.trackedChannels[1].forceCheckAndReport,
-            "!ttphysics":self.trackedChannels[1].ttcheck,
             "!gif":self.random_gif_resp,
             "!roll":self.roll_resp,
             "!lp":self.lp_resp,
@@ -70,14 +61,6 @@ class Frig:
             "This computer is shared with others including parents. This is a parent speaking to you to now. Not sure what this group is up to. I have told my son that role playing d and d games are absolutely forbidden in out household. We do not mind him having online friendships with local people that he knows for legitimate purposes. Perhaps this is an innocent group. But, we expect transparency in our son's friendships and acquaintances. If you would like to identify yourself now and let me know what your purpose for this platform is this is fine. You are welcome to do so.",
             ["Do not go gentle into that good juckyard.", "Tetus should burn and rave at close of day.", "Rage, rage against the dying of the gamings.", "Though wise men at their end know gaming is right,", "Becuase their plays had got no karma they", "Do not go gentle into that good juckyard"]
         ]
-
-        self.echoes = {"nefarious":self.echo_resps[0], # these are the trigger words and their associated echo
-                       "avatars":self.echo_resps[0],
-                       "poem":self.echo_resps[1],
-                       "poetry":self.echo_resps[1],
-                       "tetus":self.echo_resps[1],
-                       "juckyard":self.echo_resps[1]
-                       }
         
     def send(self, msg, reply = None): # sends a string/list of strings as a message/messages in the chat. optinally replies to a previous message.
         if isinstance(msg, list):
@@ -111,62 +94,38 @@ class Frig:
     #def editLastMessage(self, new_content): return self.editMessage(self.last_self_msg_id, new_content)
     def getLatestMsg(self, num_messages=1):
         url = f"{self.url}/channels/{self.chat_id}/messages?limit={num_messages}"
-        res = requests.get(url, headers={"Authorization":self.token}).json()
-        return res[0] if len(res) == 1 else res
-    def getSelfMsg(self): # determines what the bot needs to send at any given moment based on new messages and timed messages
-        try:
-            msg = self.getLatestMsg()
-        except Exception as e:
-            print(f"{bold}{gray}[FRIG]: {endc}{red}message read failed with exception:\n{e}{endc}")
+        resp = requests.get(url, headers={"Authorization":self.token})
+        if not resp.ok:
+            print(f"{bold}{gray}[FRIG]: {endc}{red} message grab not successful: {resp}{endc}")
             return None
-        msg_id, msg_author_id = msg["id"], msg["author"]["id"] 
-        if msg_id != self.last_msg_id and msg_author_id != self.botname:
-            author_global = msg["author"]["global_name"]
-            if author_global not in self.user_IDs:
-                print(f"{bold}{gray}[FRIG]: {endc}{yellow}new username '{msg['author']['global_name']}' detected. storing their ID. {endc}")
-                self.user_IDs[msg["author"]["global_name"]] = msg_author_id
-                with open(f"{self.configDir}/userIDs.json", "w") as f:
-                    f.write(json.dumps(self.user_IDs, indent=4))
-            
-            self.last_msg_id = msg_id
-            return self.getResponseToNewMsg(msg)
-        return self.getTimedMessages()
-    def getTimedMessages(self): # checks for messages triggered by timing or external events
-        reports = []
-        for channel in self.trackedChannels:
-            if channel.checkLatestUpload():
-                reports.append(channel.reportVid()) # broken in the case where this loop should report multiple new videos. ugh.
-        if len(reports) == 0:
-            return "" 
-        return reports
+        data = resp.json()
+        return data[0] if len(data) == 1 else data
+    def getSelfMsg(self): # determines what the bot needs to send at any given moment based on new messages
+        msg = self.getLatestMsg()
+        if msg:
+            msg_id, msg_author_id = msg["id"], msg["author"]["id"] 
+            if msg_id != self.last_msg_id and msg_author_id != self.id:
+                self.last_msg_id = msg_id
+                return self.getResponseToNewMsg(msg)
+        return None
+
     def getResponseToNewMsg(self, msg): # determines how to respond to a newly detected message. 
         body = msg["content"].lstrip()
         if body.startswith("!"):
-            command_name = body.split(" ")[0]
+            command_name = body.split(" ")[0].strip()
             print(f"{bold}{gray}[FRIG]: {endc}{yellow} command found: {command_name}{endc}")
             if command_name in self.commands.keys():
                 try:
                     return self.commands[command_name](msg)
                 except Exception as e:
-                    #print(f"{bold}{gray}[FRIG]: {endc}{red} known command '{command_name}' failed with exception:\n{e}{endc}")
                     print(f"{bold}{gray}[FRIG]: {endc}{red} known command '{command_name}' failed")
                     traceback.print_exc()
                     print(endc)
                     return f"command '{command_name}' failed with exception:\n```ansi\n{e}\n```"
             else:
-                print(f"{bold}{gray}[FRIG]: {endc}{red} unknown command '{command_name}' was called:\n{e}{endc}")
+                print(f"{bold}{gray}[FRIG]: {endc}{red} unknown command '{command_name}' was called:\n{endc}")
                 return f"command '{command_name}' not recognized"
-        else:
-            return self.echo_resp(body)
-    def echo_resp(self, body, reference_gif_prob=0.1): # determines which, if any, (non command) response to respond with. first checks phrases then other conditionals
-        bsplit = body.split(" ")
-        for e in self.echoes:
-            if e in bsplit:
-                print(f"{bold}{gray}[FRIG]: {endc}{gray} issuing echo for '{e}'{endc}")
-                return self.echoes[e]
-        if (random.uniform(0, 1) < reference_gif_prob) and contains_scrambled(body, "itysl"):
-                return self.itysl_reference_resp()
-        return ""
+
     def runloop(self):
         print(bold, cyan, "\nFrigBot started!", endc)
         while 1:
@@ -175,9 +134,9 @@ class Frig:
                 self.send(resp)
                 self.wait()
             except Exception as e:
-                print(f"{red}, {bold}, [FRIG] CRASHED WITH EXCEPTION:\n{e}")
+                print(f"{red}, {bold}, [FRIG] crashed with exception:\n{e}")
+                traceback.print_exc()
                 time.sleep(3)
-
 
     def coinflip_resp(self, *args, **kwargs):
         return random.choice(['heads', 'tails'])
@@ -186,15 +145,6 @@ class Frig:
         self.user_IDs = loadjson(self.configDir, "userIDs.json")
         self.rps_scores = loadjson(self.configDir, "rpsScores.json")
         self.keys = loadjson(self.keypath)
-        self.botname = self.user_IDs["FriggBot2000"]
-
-    def dune_resp(self, msg):
-        delta = datetime.datetime(2025, 12, 18, 20, 0, 0) - datetime.datetime.now()
-        year, days, hours, minutes, seconds = delta.days//365, delta.days%365, delta.seconds//3600, (delta.seconds%3600)//60, delta.seconds%60
-        print(delta.days, delta.days//365, year, year==1)
-        if year == 1:
-            return [self.randomgif("dune", 300), f"1 year, {days} days, {hours} hours, {minutes} minutes, and {seconds} seconds"]
-        return [self.randomgif("dune", 300), f"{days} days, {hours} hours, {minutes} minutes, and {seconds} seconds."]
 
     def itysl_reference_resp(self, query="itysl", num=500):
         return self.randomgif(query, num)
@@ -254,6 +204,7 @@ class Frig:
         self.send(resp, reply={'channel_id': msg['channel_id'], 'message_id': msg['id']})
     def gpt_resp(self, msg):
         prompt = msg['content'].replace("!gpt", "").strip()
+        print(prompt)
         self.send('. . .')
         resp = self.openai_resp("chatgpt-4o-latest", prompt, search=False).strip().split("<split>")
         #resp = split_resp(resp)
@@ -282,12 +233,7 @@ class Frig:
             "!cmds": "Alias for !help.",
             "!gpt": "Generates a response using GPT-4o.",
             "!o1": "Generates a response using OpenAI's O1-preview model.",
-            "!dune": "Shows countdown to Dune: Part Two release.",
             "!rps": "Play rock-paper-scissors with the bot. Usage: `!rps [rock|paper|scissors]`.",
-            "!fish": "Checks for a new video from 'Femboy Fishing'.",
-            "!ttfish": "Shows time remaining until the next check for 'Femboy Fishing'.",
-            "!physics": "Checks for a new video from 'Femboy Physics'.",
-            "!ttphysics": "Shows time remaining until the next check for 'Femboy Physics'.",
             "!gif": "Searches for a random GIF. Usage: `!gif [search term]`.",
             "!roll": "Rolls a random number. Usage: `!roll [max value]`.",
             "!lp": "Retrieves ranked info for a League of Legends summoner. Usage: `!lp [summoner name]`.",
@@ -400,11 +346,6 @@ class Frig:
     def write_rps_scores(self):
         with open(f"{self.configDir}/rpsScores.json", "w") as f:
             f.write(json.dumps(self.rps_scores, indent=4))
-    
-    def addNewTrackedChannel(self, channelName, channelID, saveFileName):
-        fname = saveFileName if saveFileName.endswith(".json") else saveFileName+".json"
-        tracker = ytChannelTracker(channelName, self.keys["youtube"], channelID, f"{self.configDir}/{fname}")
-        self.trackedChannels.append(tracker)
 
     def gifsearch(self, query, num):
         url = f"https://g.tenor.com/v2/search?q={query}&key={self.keys['tenor']}&limit={num}"

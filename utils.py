@@ -1,5 +1,6 @@
 import datetime
 import json
+import math
 
 purple  = "\033[38;2;255;0;255m"
 blue    = "\033[38;2;0;0;255m"
@@ -45,8 +46,16 @@ def contains_scrambled(msg, key):
             return True
     return False
 
+
 def daterep(dat):
     return dat.strftime("%Y-%b-%d (%H:%M:%S)")
+
+def split_resp(resp):
+    if len(resp) >= 2000:
+        nsplit = math.ceil(len(resp)/2000)
+        interval = len(resp)//nsplit
+        return [resp[i*interval:(i+1)*interval] for i in range(nsplit)]
+    return resp
 
 def strptime(dstr): return datetime.datetime.strptime(dstr, "%Y-%b-%d (%H:%M:%S)")
 
