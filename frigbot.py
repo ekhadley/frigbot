@@ -198,14 +198,14 @@ class Frig:
              return "https://tenor.com/view/bkrafty-bkraftyerror-bafty-error-gif-25963379"
     def gpt_search_resp(self, msg):
         prompt = msg['content'].replace("!gpt", "").strip()
-        self.send('. . .')
+        #self.send('. . .')
         resp = self.openai_resp("gpt-4o", prompt, search=True).strip().split("<split>")
         #resp = split_resp(resp)
         self.send(resp, reply={'channel_id': msg['channel_id'], 'message_id': msg['id']})
     def gpt_resp(self, msg):
         prompt = msg['content'].replace("!gpt", "").strip()
         print(prompt)
-        self.send('. . .')
+        #self.send('. . .')
         resp = self.openai_resp("chatgpt-4o-latest", prompt, search=False).strip().split("<split>")
         #resp = split_resp(resp)
         self.send(resp, reply={'channel_id': msg['channel_id'], 'message_id': msg['id']})
