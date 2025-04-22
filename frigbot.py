@@ -186,7 +186,7 @@ class Frig:
          try:
              resp = self.openai_client.responses.create(
                      model = model,
-                     instructions = "You are an assistant integrated in a Discord chatbot named FriggBot2000. When using markdown, you may use bullet points and headers, but do not use tables or level 4 headers (####). You should generally prefer briefer answers, suitable for a shared group chat. But fully answering complex queries supercedes this. Discord messages can only have about 250 words, so split up long responses accordingly using the token <split>",
+                     instructions = "You are an assistant integrated in a Discord chatbot named FriggBot2000. Do not use emojis. When using markdown, you may use bullet points and headers, but do not use tables or level 4 headers (####). You should generally prefer briefer answers, suitable for a shared group chat. But fully answering complex queries supercedes this. Discord messages can only have about 250 words, so split up long responses accordingly using the token <split>",
                      tools=[{"type": "web_search_preview"}] if search else [],
                      input = prompt
                      )
