@@ -1,5 +1,6 @@
 import random
 import datetime
+import base64
 import time
 import json
 import requests
@@ -41,6 +42,7 @@ class Frig:
             "!commands":self.help_resp,
             "!cmds":self.help_resp,
             "!gpt":self.gpt_resp,
+            "!img":self.gpt_img_resp,
             "!gpts":self.gpt_search_resp,
             "!rps":self.rps_resp,
             "!gif":self.random_gif_resp,
@@ -48,8 +50,6 @@ class Frig:
             "!lp":self.lp_resp,
             "!piggies":self.group_lp_resp,
             "!registeredsexoffenders":self.lol.list_known_summoners,
-            "!dallen":self.dalle_natural_resp,
-            "!dalle":self.dalle_vivid_resp,
             "!coin": self.coinflip_resp,
             "!coinflip": self.coinflip_resp,
             "!sus": self.sus_resp,
@@ -62,7 +62,7 @@ class Frig:
             ["Do not go gentle into that good juckyard.", "Tetus should burn and rave at close of day.", "Rage, rage against the dying of the gamings.", "Though wise men at their end know gaming is right,", "Becuase their plays had got no karma they", "Do not go gentle into that good juckyard"]
         ]
         
-    def send(self, msg, reply = None): # sends a string/list of strings as a message/messages in the chat. optinally replies to a previous message.
+    def send(self, msg, reply = None, files=None): # sends a string/list of strings as a message/messages in the chat. optinally replies to a previous message.
         if isinstance(msg, list):
             for m in msg:
                 self.send(m, reply)
@@ -80,7 +80,8 @@ class Frig:
             send_resp = requests.post(
                 f"{self.url}/channels/{self.chat_id}/messages",
                 json = post_data,
-                headers={ "Authorization":self.token }
+                headers = { "Authorization":self.token },
+                files = files
             ).text
             #resp_info = json.loads(send_resp)
             #self.last_self_msg_id = resp_info['id']
@@ -210,21 +211,25 @@ class Frig:
         #resp = split_resp(resp)
         self.send(resp, reply={'channel_id': msg['channel_id'], 'message_id': msg['id']})
 
-    def get_dalle3_link(self, msg, style:Literal['vivid', 'natural'], quality:Literal['standard', 'hd']):
-        print(f"{bold}{gray}[DALLE]: {endc}{yellow}image generation requested{endc}")
-        self.send('. . .')
-        try:
-            prompt = msg['content'].replace("!dalle", "").strip()
-            response = self.openai_client.images.generate(model="dall-e-3", prompt=prompt, size="1024x1024", quality=quality, n=1, style=style)
-            print(f"{bold}{gray}[DALLE]: {endc}{green}image generated {endc}")
-            #print(bold, purple, response.data[0].revised_prompt, endc)
-            return response.data[0].url
-        except Exception as e:
-            print(f"{bold}{gray}[DALLE]: {endc}{red}text completion failed with exception:\n{e}{endc}")
-            if e.code == 'content_policy_violation':
-                return "no porn!!!"
-    def dalle_vivid_resp(self, msg): return self.get_dalle3_link(msg, style='vivid', quality='standard')
-    def dalle_natural_resp(self, msg): return self.get_dalle3_link(msg, style='natural', quality='standard')
+    def gpt_img_resp(self, msg):
+        prompt = msg['content'].replace("!img", "").strip()
+        print(prompt)
+        #self.send('. . .')
+        resp = self.openai_client.images.generate(
+                model="gpt-image-1",
+                prompt=prompt
+            )
+        #resp = split_resp(resp)
+        #self.send(resp, reply={'channel_id': msg['channel_id'], 'message_id': msg['id']})
+        img_b64 = resp.data[0].bs4_json
+        img_bytes = base64.b64decode(img_b64)
+        print(type(img_b64))
+        print(type(img_bytes))
+        print(img_b64)
+        print(img_bytes)
+        self.send("", files={"file": ("output", img_bytes)})
+
+
 
     def help_resp(self, msg):
         command_descriptions = {
@@ -232,15 +237,13 @@ class Frig:
             "!commands": "Alias for !help.",
             "!cmds": "Alias for !help.",
             "!gpt": "Generates a response using GPT-4o.",
-            "!o1": "Generates a response using OpenAI's O1-preview model.",
+            "!img": "Generates an image using gpt-image-1.",
             "!rps": "Play rock-paper-scissors with the bot. Usage: `!rps [rock|paper|scissors]`.",
             "!gif": "Searches for a random GIF. Usage: `!gif [search term]`.",
             "!roll": "Rolls a random number. Usage: `!roll [max value]`.",
             "!lp": "Retrieves ranked info for a League of Legends summoner. Usage: `!lp [summoner name]`.",
             "!piggies": "Displays ranked info for a group of predefined League of Legends players.",
             "!registeredsexoffenders": "Lists all known League of Legends summoners in Frig's database.",
-            "!dallen": "Generates an image using DALL-E in 'natural' style.",
-            "!dalle": "Generates an image using DALL-E in 'vivid' style.",
             "!coin": "Flips a coin.",
             "!coinflip": "Alias for !coin.",
             "!sus": "based on the last ~100 messages, generate an ai continuation of the conversation"
