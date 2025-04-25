@@ -66,7 +66,7 @@ class Frig:
         if isinstance(msg, list):
             for m in msg:
                 self.send(m, reply)
-        elif isinstance(msg, str) and msg != "":
+        elif isinstance(msg, str) and (msg != "" or files is not None):
             if reply is None:
                 post_data = { "content": str(msg) }
             else:
@@ -199,37 +199,24 @@ class Frig:
              return "https://tenor.com/view/bkrafty-bkraftyerror-bafty-error-gif-25963379"
     def gpt_search_resp(self, msg):
         prompt = msg['content'].replace("!gpt", "").strip()
-        #self.send('. . .')
         resp = self.openai_resp("gpt-4o", prompt, search=True).strip().split("<split>")
-        #resp = split_resp(resp)
         self.send(resp, reply={'channel_id': msg['channel_id'], 'message_id': msg['id']})
     def gpt_resp(self, msg):
         prompt = msg['content'].replace("!gpt", "").strip()
-        print(prompt)
-        #self.send('. . .')
         resp = self.openai_resp("chatgpt-4o-latest", prompt, search=False).strip().split("<split>")
-        #resp = split_resp(resp)
         self.send(resp, reply={'channel_id': msg['channel_id'], 'message_id': msg['id']})
 
     def gpt_img_resp(self, msg):
         prompt = msg['content'].replace("!img", "").strip()
-        print(prompt)
-        #self.send('. . .')
         resp = self.openai_client.images.generate(
                 model="gpt-image-1",
-                prompt=prompt
+                prompt=prompt,
+                moderation="low",
+                quality="high"
             )
-        #resp = split_resp(resp)
-        #self.send(resp, reply={'channel_id': msg['channel_id'], 'message_id': msg['id']})
-        img_b64 = resp.data[0].bs4_json
+        img_b64 = resp.data[0].b64_json
         img_bytes = base64.b64decode(img_b64)
-        print(type(img_b64))
-        print(type(img_bytes))
-        print(img_b64)
-        print(img_bytes)
-        self.send("", files={"file": ("output", img_bytes)})
-
-
+        self.send("", files={"file": ("output.png", img_bytes)})
 
     def help_resp(self, msg):
         command_descriptions = {
