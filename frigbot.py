@@ -208,6 +208,7 @@ class Frig:
 
     def gpt_img_resp(self, msg):
         prompt = msg['content'].replace("!img", "").strip()
+        self.send(f"image gen started: '{prompt if len(prompt) < 15 else prompt[:15]+'...'}'")
         resp = self.openai_client.images.generate(
                 model="gpt-image-1",
                 prompt=prompt,
