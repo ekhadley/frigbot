@@ -209,12 +209,18 @@ class Frig:
     def gpt_img_resp(self, msg):
         prompt = msg['content'].replace("!img", "").strip()
         self.send(f"image gen started: '{prompt if len(prompt) < 15 else prompt[:15]+'...'}'")
-        resp = self.openai_client.images.generate(
-                model="gpt-image-1",
-                prompt=prompt,
-                moderation="low",
-                quality="high"
-            )
+        try:
+            resp = self.openai_client.images.generate(
+                    model="gpt-image-1",
+                    prompt=prompt,
+                    moderation="low",
+                    quality="high"
+                )
+        except Exception as e:
+            if e.code == "moderation_blocked":
+                return "no porn!!!"
+            return f"error while generating: '{e.code}'"
+
         img_b64 = resp.data[0].b64_json
         img_bytes = base64.b64decode(img_b64)
         self.send("", files={"file": ("output.png", img_bytes)})
