@@ -62,19 +62,19 @@ class Frig:
             ["Do not go gentle into that good juckyard.", "Tetus should burn and rave at close of day.", "Rage, rage against the dying of the gamings.", "Though wise men at their end know gaming is right,", "Becuase their plays had got no karma they", "Do not go gentle into that good juckyard"]
         ]
         
-    def send(self, msg, reply = None, files=None): # sends a string/list of strings as a message/messages in the chat. optinally replies to a previous message.
+    def send(self, msg, reply_msg_id = None, files=None): # sends a string/list of strings as a message/messages in the chat. optinally replies to a previous message.
         if isinstance(msg, list):
             for m in msg:
-                self.send(m, reply)
+                self.send(m, reply_msg_id)
         elif isinstance(msg, str) and (msg != "" or files is not None):
-            if reply is None:
+            if reply_msg_id is None:
                 post_data = { "content": str(msg) }
             else:
                 post_data = {
                     'content': str(msg),
                     'message_reference': {
-                        'channel_id':reply['channel_id'],
-                        'message_id':reply['message_id'],
+                        'channel_id':self.chat_id,
+                        'message_id':reply_msg_id,
                     }
                 }
             send_resp = requests.post(
@@ -200,11 +200,11 @@ class Frig:
     def gpt_search_resp(self, msg):
         prompt = msg['content'].replace("!gpt", "").strip()
         resp = self.openai_resp("gpt-4o", prompt, search=True).strip().split("<split>")
-        self.send(resp, reply={'channel_id': msg['channel_id'], 'message_id': msg['id']})
+        self.send(resp, reply_msg_id = msg['id'])
     def gpt_resp(self, msg):
         prompt = msg['content'].replace("!gpt", "").strip()
-        resp = self.openai_resp("chatgpt-4o-latest", prompt, search=False).strip().split("<split>")
-        self.send(resp, reply={'channel_id': msg['channel_id'], 'message_id': msg['id']})
+        output = self.openai_resp("chatgpt-4o-latest", prompt, search=False).strip().split("<split>")
+        self.send(output, reply_msg_id = msg['id'])
 
     def gpt_img_resp(self, msg):
         prompt = msg['content'].replace("!img", "").strip()
