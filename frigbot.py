@@ -41,6 +41,7 @@ class Frig:
             "!help":self.help_resp, # a dict of associations between commands (prefaced with a '!') and the functions they call to generate responses.
             "!commands":self.help_resp,
             "!cmds":self.help_resp,
+            "!got":self.got_resp,
             "!gpt":self.gpt_resp,
             "!img":self.gpt_img_resp,
             "!gpts":self.gpt_search_resp,
@@ -344,6 +345,8 @@ class Frig:
         with open(f"{self.configDir}/rpsScores.json", "w") as f:
             f.write(json.dumps(self.rps_scores, indent=4))
 
+    def got_resp(self, *args, **kwargs):
+        return "https://tenor.com/view/sosig-gif-9357588"
     def gifsearch(self, query, num):
         url = f"https://g.tenor.com/v2/search?q={query}&key={self.keys['tenor']}&limit={num}"
         r = requests.get(url)
