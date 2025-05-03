@@ -215,7 +215,7 @@ class Frig:
                     model="gpt-image-1",
                     prompt=prompt,
                     moderation="low",
-                    quality="high"
+                    quality="low"
                 )
         except Exception as e:
             if e.code == "moderation_blocked":
