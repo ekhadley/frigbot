@@ -216,7 +216,6 @@ class Frig:
                     prompt=prompt,
                     moderation="low",
                     quality="low",
-                    background="transparent",
                 )
         except Exception as e:
             if e.code == "moderation_blocked":
