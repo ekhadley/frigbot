@@ -10,7 +10,7 @@ import traceback
 from typing import Literal
 
 from lolManager import lolManager
-from chat import ChatManager
+from chat import CompletionManager
 
 from utils import red, endc, yellow, bold, cyan, gray, green, aendc, rankColors, abold
 from utils import loadjson
@@ -58,7 +58,7 @@ class Frig:
             #"!locate_xylotile": self.locate_xylotile_resp
         }
 
-        self.echo_resps = [ # the static repsonse messages for trigger words which I term "echo" responses
+        self.echo_resps = [ # the static repsonse messages for trigger words which I term "echo" responses (deprecated, i just keep these here cuz its good pasta)
             "This computer is shared with others including parents. This is a parent speaking to you to now. Not sure what this group is up to. I have told my son that role playing d and d games are absolutely forbidden in out household. We do not mind him having online friendships with local people that he knows for legitimate purposes. Perhaps this is an innocent group. But, we expect transparency in our son's friendships and acquaintances. If you would like to identify yourself now and let me know what your purpose for this platform is this is fine. You are welcome to do so.",
             ["Do not go gentle into that good juckyard.", "Tetus should burn and rave at close of day.", "Rage, rage against the dying of the gamings.", "Though wise men at their end know gaming is right,", "Becuase their plays had got no karma they", "Do not go gentle into that good juckyard"]
         ]
@@ -68,16 +68,9 @@ class Frig:
             for m in msg:
                 self.send(m, reply_msg_id)
         elif isinstance(msg, str) and (msg != "" or files is not None):
-            if reply_msg_id is None:
-                post_data = { "content": str(msg) }
-            else:
-                post_data = {
-                    'content': str(msg),
-                    'message_reference': {
-                        'channel_id':self.chat_id,
-                        'message_id':reply_msg_id,
-                    }
-                }
+            if reply_msg_id is None: post_data = { "content": str(msg) }
+            else: post_data = { 'content': str(msg), 'message_reference': { 'channel_id':self.chat_id, 'message_id':reply_msg_id }}
+
             send_resp = requests.post(
                 f"{self.url}/channels/{self.chat_id}/messages",
                 json = post_data,
