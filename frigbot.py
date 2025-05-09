@@ -10,7 +10,8 @@ import traceback
 from typing import Literal
 
 from lolManager import lolManager
-from chat import CompletionManager
+from chat import ChatAssistant
+from completions import CompletionManager
 
 from utils import red, endc, yellow, bold, cyan, gray, green, aendc, rankColors, abold
 from utils import loadjson
@@ -25,6 +26,8 @@ class Frig:
         self.configDir = configDir
         self.read_saved_state()
 
+        self.start_time = datetime.datetime.now()
+
         self.bot_name = "FriggBot20000"
         self.id = "352226045228875786"
         
@@ -32,19 +35,21 @@ class Frig:
         self.token = self.keys['discord']
 
         self.openai_client = openai.OpenAI(api_key = self.keys['openai'])
+        self.asst = ChatAssistant("chatgpt-4o-latest", self.keys['openai'])
 
         self.lol = lolManager(self.keys["riot"], f"{self.configDir}/summonerIDs.json")
 
-        self.chatter = ChatManager(self.keys['runpod'])
+        self.completer = CompletionManager(self.keys['runpod'])
 
         self.commands = {
             "!help":self.help_resp, # a dict of associations between commands (prefaced with a '!') and the functions they call to generate responses.
             "!commands":self.help_resp,
             "!cmds":self.help_resp,
             "!got":self.got_resp,
-            "!gpt":self.gpt_resp,
             "!img":self.gpt_img_resp,
-            "!gpts":self.gpt_search_resp,
+            #"!gpt":self.gpt_resp,
+            "!gpt":self.chat_resp,
+            #"!gpts":self.gpt_search_resp,
             "!rps":self.rps_resp,
             "!gif":self.random_gif_resp,
             "!roll":self.roll_resp,
@@ -55,6 +60,7 @@ class Frig:
             "!coinflip": self.coinflip_resp,
             "!sus": self.sus_resp,
             "!imposter": self.imposter_resp,
+            "!uptime": self.uptime_resp,
             #"!locate_xylotile": self.locate_xylotile_resp
         }
 
@@ -65,20 +71,21 @@ class Frig:
         
     def send(self, msg, reply_msg_id = None, files=None): # sends a string/list of strings as a message/messages in the chat. optinally replies to a previous message.
         if isinstance(msg, list):
-            for m in msg:
-                self.send(m, reply_msg_id)
-        elif isinstance(msg, str) and (msg != "" or files is not None):
-            if reply_msg_id is None: post_data = { "content": str(msg) }
-            else: post_data = { 'content': str(msg), 'message_reference': { 'channel_id':self.chat_id, 'message_id':reply_msg_id }}
+            return [self.send(m, reply_msg_id) for m in msg]
+
+        elif msg is not None or files is not None:
+            if reply_msg_id is None:
+                post_data = { "content": str(msg) }
+            else:
+                post_data = { 'content': str(msg), 'message_reference': { 'message_id':reply_msg_id, 'channel_id':self.chat_id }}
 
             send_resp = requests.post(
                 f"{self.url}/channels/{self.chat_id}/messages",
                 json = post_data,
                 headers = { "Authorization":self.token },
                 files = files
-            ).text
-            #resp_info = json.loads(send_resp)
-            #self.last_self_msg_id = resp_info['id']
+            ).json()
+            return send_resp
     def editMessage(self, message_id, new_content):
         resp = requests.patch(
             f"{self.url}/channels/{self.chat_id}/messages/{message_id}",
@@ -86,7 +93,6 @@ class Frig:
             headers={"Authorization": self.token}
         )
         return resp
-    #def editLastMessage(self, new_content): return self.editMessage(self.last_self_msg_id, new_content)
     def getLatestMsg(self, num_messages=1):
         url = f"{self.url}/channels/{self.chat_id}/messages?limit={num_messages}"
         resp = requests.get(url, headers={"Authorization":self.token})
@@ -120,6 +126,9 @@ class Frig:
             else:
                 print(f"{bold}{gray}[FRIG]: {endc}{red} unknown command '{command_name}' was called:\n{endc}")
                 return f"command '{command_name}' not recognized"
+        elif self.asst.requiresResponse(msg):
+            print(f"{bold}{gray}[FRIG]: {endc}{yellow} chat completion requested via reply{endc}")
+            return self.chat_resp(msg)
 
     def runloop(self):
         print(bold, cyan, "\nFrigBot started!", endc)
@@ -154,10 +163,10 @@ class Frig:
         chat_history = self.getLatestMsg(num_messages=history_len)
         chat_history = [msg for msg in chat_history if msg['author']['global_name'] != 'FriggBot2000' and "!sus" not in msg['content']]
         print(f"{bold}{gray}[SUS]: {endc}{yellow}chat history succesfully recorded{endc}")
-        chat_ctx = self.chatter.formatMessages(chat_history)
+        chat_ctx = self.completer.formatMessages(chat_history)
         print(f"completing on chat context: '{repr(chat_ctx)}'")
         print(f"{bold}{gray}[SUS]: {endc}{yellow}chat history formatted{endc}")
-        completion = self.chatter.getCompletion(chat_ctx)
+        completion = self.completer.getCompletion(chat_ctx)
         print(f"{bold}{gray}[SUS]: {endc}{green}continuation succesfully generated{endc}")
         return completion.split("\n")
     def imposter_resp(self, msg, **kwargs):
@@ -169,36 +178,37 @@ class Frig:
         chat_history = self.getLatestMsg(num_messages=25)
         chat_history = [msg for msg in chat_history if msg['author']['global_name'] != 'FriggBot2000' and "!imposter" not in msg['content'] and "!sus" not in msg['content']]
         print(f"{bold}{gray}[SUS]: {endc}{yellow}chat history succesfully recorded{endc}")
-        chat_ctx = self.chatter.formatMessages(chat_history, tail=f"{imposter}: ")
+        chat_ctx = self.completer.formatMessages(chat_history, tail=f"{imposter}: ")
         print(f"completing on chat context: '{repr(chat_ctx)}'")
         print(f"{bold}{gray}[SUS]: {endc}{yellow}chat history formatted{endc}")
-        completion = f"{imposter}: " + self.chatter.getCompletion(chat_ctx)
+        completion = f"{imposter}: " + self.completer.getCompletion(chat_ctx)
         print(f"{bold}{gray}[SUS]: {endc}{green}continuation succesfully generated{endc}")
         return completion.split("\n")
 
-    def openai_resp(self, model, prompt, search=False) -> str:
-         print(f"{bold}{gray}[{model}]: {endc}{yellow}text completion requested{endc}")
-         try:
-             resp = self.openai_client.responses.create(
-                     model = model,
-                     instructions = "You are an assistant integrated in a Discord chatbot named FriggBot2000. Do not use emojis. When using markdown, you may use bullet points and headers, but do not use tables or level 4 headers (####). You should generally prefer briefer answers, suitable for a shared group chat. But fully answering complex queries supercedes this. Discord messages can only have about 250 words, so split up long responses accordingly using the token <split>.",
-                     tools=[{"type": "web_search_preview"}] if search else [],
-                     input = prompt
-                     )
-             resp = resp.output_text.replace("\n\n", "\n")
-             print(f"{bold}{gray}[{model}]: {endc}{green}text completion generated {endc}")
-             return resp
-         except Exception as e:
-             print(f"{bold}{gray}[{model}]: {endc}{red}text completion failed with exception:\n{e}{endc}")
-             return "https://tenor.com/view/bkrafty-bkraftyerror-bafty-error-gif-25963379"
-    def gpt_search_resp(self, msg):
-        prompt = msg['content'].replace("!gpt", "").strip()
-        resp = self.openai_resp("gpt-4o", prompt, search=True).strip().split("<split>")
-        self.send(resp, reply_msg_id = msg['id'])
-    def gpt_resp(self, msg):
-        prompt = msg['content'].replace("!gpt", "").strip()
-        output = self.openai_resp("chatgpt-4o-latest", prompt, search=False).strip().split("<split>")
-        self.send(output, reply_msg_id = msg['id'])
+    def chat_resp(self, msg):
+        author = msg['author']['global_name']
+        new_conv = "!gpt" in msg['content']
+        content = msg['content'].replace("!gpt ", "").strip()
+        msg_id = msg['id']
+        prompt = f"{author}: {content}"
+
+        if new_conv:
+            self.asst.addMessage("user", prompt, msg_id)
+        else:
+            reply_msg_id = msg['message_reference']['message_id']
+            try:
+                self.asst.addMessage("user", prompt, msg_id, reply_msg_id)
+            except KeyError:
+                print(f"{bold}{gray}[FRIG]: {endc}{red} tried to continue a conversation with no parent message{endc}")
+                return "cant continue that conversation sry"
+
+        print(f"{bold}{gray}[FRIG]: {endc}{yellow}chat completion requested. . .{endc}")
+        completion = self.asst.getCompletion(msg_id)
+        split_completion = completion.replace("\n\n", "\n").strip().split("<split>")
+
+        resps = self.send(split_completion, reply_msg_id = msg_id)
+        for comp, resp in zip(split_completion, resps):
+            self.asst.addMessage("assistant", completion, resp["id"], msg_id)
 
     def gpt_img_resp(self, msg):
         prompt = msg['content'].replace("!img", "").strip()
@@ -234,7 +244,8 @@ class Frig:
             "!registeredsexoffenders": "Lists all known League of Legends summoners in Frig's database.",
             "!coin": "Flips a coin.",
             "!coinflip": "Alias for !coin.",
-            "!sus": "based on the last ~100 messages, generate an ai continuation of the conversation"
+            "!sus": "based on the last ~100 messages, generate an ai continuation of the conversation",
+            "!uptime": "Shows how long Frig has been live without stopping."
         }
         resp = "Available commands:"
         for cmd, desc in command_descriptions.items():
@@ -365,6 +376,10 @@ class Frig:
         location = phone.location()
         link = f"https://maps.google.com/?q={location['latitude']},{location['longitude']}"
         return ["Xylotile is currently here:", link]
+    
+    def uptime_resp(self, *args, **kwargs):
+        delta = datetime.datetime.now() - self.start_time
+        return f"uptime: {delta.days}d {delta.seconds // 3600}h {(delta.seconds % 3600) // 60}m {delta.seconds % 60}s"
 
     def wait(self):
         time.sleep(self.loop_delay)
