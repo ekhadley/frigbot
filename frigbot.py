@@ -108,6 +108,7 @@ class Frig:
                 return True, msg
         return False, msg
     def botTaggedInMessage(self, msg) -> bool:
+        print((ment:=msg.get("mentions")) is not None and self.id in [m['id'] for m in ment])
         return (ment:=msg.get("mentions")) is not None and self.id in [m['id'] for m in ment]
     def getResponseToNewMessage(self, msg):
         body = msg["content"].lstrip()
@@ -188,7 +189,7 @@ class Frig:
 
     def chat_resp(self, msg):
         author = msg['author']['global_name']
-        new_conv = "!gpt" in msg['content'] or self.botTaggedInMessage(msg)
+        new_conv = "!gpt" in msg['content'] or f"<@{self.id}>" in msg['content']
         content = msg['content'].replace("!gpt ", "").strip()
         msg_id = msg['id']
         prompt = f"{author}: {content}"
