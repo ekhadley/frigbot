@@ -70,9 +70,7 @@ class Frig:
         ]
         
     def send(self, msg, reply_msg_id = None, files=None): # sends a string/list of strings as a message/messages in the chat. optinally replies to a previous message.
-        if isinstance(msg, list):
-            return [self.send(m, reply_msg_id) for m in msg]
-
+        if isinstance(msg, list): return [self.send(m, reply_msg_id) for m in msg]
         elif msg is not None or files is not None:
             if reply_msg_id is None:
                 post_data = { "content": str(msg) }
@@ -93,7 +91,7 @@ class Frig:
             headers={"Authorization": self.token}
         )
         return resp
-    def getLatestMsg(self, num_messages=1):
+    def getLatestMessage(self, num_messages=1) -> dict|list[dict]:
         url = f"{self.url}/channels/{self.chat_id}/messages?limit={num_messages}"
         resp = requests.get(url, headers={"Authorization":self.token})
         if not resp.ok:
@@ -101,16 +99,17 @@ class Frig:
             return None
         data = resp.json()
         return data[0] if len(data) == 1 else data
-    def getSelfMsg(self): # determines what the bot needs to send at any given moment based on new messages
-        msg = self.getLatestMsg()
+    def getNewMessage(self):
+        msg = self.getLatestMessage()
         if msg:
             msg_id, msg_author_id = msg["id"], msg["author"]["id"] 
             if msg_id != self.last_msg_id and msg_author_id != self.id:
                 self.last_msg_id = msg_id
-                return self.getResponseToNewMsg(msg)
-        return None
-
-    def getResponseToNewMsg(self, msg): # determines how to respond to a newly detected message. 
+                return True, msg
+        return False, msg
+    def botTaggedInMessage(self, msg) -> bool:
+        return (ment:=msg.get("mentions")) is not None and self.id in [m['id'] for m in ment]
+    def getResponseToNewMessage(self, msg):
         body = msg["content"].lstrip()
         if body.startswith("!"):
             command_name = body.split(" ")[0].strip()
@@ -126,7 +125,7 @@ class Frig:
             else:
                 print(f"{bold}{gray}[FRIG]: {endc}{red} unknown command '{command_name}' was called:\n{endc}")
                 return f"command '{command_name}' not recognized"
-        elif self.asst.requiresResponse(msg):
+        elif self.asst.requiresResponse(msg) or self.botTaggedInMessage(msg):
             print(f"{bold}{gray}[FRIG]: {endc}{yellow} chat completion requested via reply{endc}")
             return self.chat_resp(msg)
 
@@ -134,8 +133,10 @@ class Frig:
         print(bold, cyan, "\nFrigBot started!", endc)
         while 1:
             try:
-                resp = self.getSelfMsg()
-                self.send(resp)
+                is_new, msg = self.getNewMessage()
+                if is_new:
+                    resp = self.getResponseToNewMessage(msg)
+                    self.send(resp)
                 self.wait()
             except Exception as e:
                 print(f"{red}, {bold}, [FRIG] crashed with exception:\n{e}")
@@ -160,7 +161,7 @@ class Frig:
             history_len = 50
         print(f"{bold}{gray}[SUS]: {endc}{yellow}ai continuation requested{endc}")
         history_len = min(max(2, history_len), 100)
-        chat_history = self.getLatestMsg(num_messages=history_len)
+        chat_history = self.getLatestMessage(num_messages=history_len)
         chat_history = [msg for msg in chat_history if msg['author']['global_name'] != 'FriggBot2000' and "!sus" not in msg['content']]
         print(f"{bold}{gray}[SUS]: {endc}{yellow}chat history succesfully recorded{endc}")
         chat_ctx = self.completer.formatMessages(chat_history)
@@ -175,7 +176,7 @@ class Frig:
         except Exception:
             imposter = ""
         print(f"{bold}{gray}[SUS]: {endc}{yellow}ai continuation requested{endc}")
-        chat_history = self.getLatestMsg(num_messages=25)
+        chat_history = self.getLatestMessage(num_messages=25)
         chat_history = [msg for msg in chat_history if msg['author']['global_name'] != 'FriggBot2000' and "!imposter" not in msg['content'] and "!sus" not in msg['content']]
         print(f"{bold}{gray}[SUS]: {endc}{yellow}chat history succesfully recorded{endc}")
         chat_ctx = self.completer.formatMessages(chat_history, tail=f"{imposter}: ")
@@ -187,11 +188,12 @@ class Frig:
 
     def chat_resp(self, msg):
         author = msg['author']['global_name']
-        new_conv = "!gpt" in msg['content']
+        new_conv = "!gpt" in msg['content'] or self.botTaggedInMessage(msg)
         content = msg['content'].replace("!gpt ", "").strip()
         msg_id = msg['id']
         prompt = f"{author}: {content}"
 
+        print(prompt)
         if new_conv:
             self.asst.addMessage("user", prompt, msg_id)
         else:
@@ -207,7 +209,8 @@ class Frig:
         split_completion = completion.replace("\n\n", "\n").strip().split("<split>")
 
         resps = self.send(split_completion, reply_msg_id = msg_id)
-        for comp, resp in zip(split_completion, resps):
+        #for comp, resp in zip(split_completion, resps):
+        for resp in resps:
             self.asst.addMessage("assistant", completion, resp["id"], msg_id)
 
     def gpt_img_resp(self, msg):
@@ -218,7 +221,7 @@ class Frig:
                     model="gpt-image-1",
                     prompt=prompt,
                     moderation="low",
-                    quality="low",
+                    quality="high",
                 )
         except Exception as e:
             if e.code == "moderation_blocked":
