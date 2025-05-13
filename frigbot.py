@@ -108,8 +108,7 @@ class Frig:
                 return True, msg
         return False, msg
     def botTaggedInMessage(self, msg) -> bool:
-        print((ment:=msg.get("mentions")) is not None and self.id in [m['id'] for m in ment])
-        return (ment:=msg.get("mentions")) is not None and self.id in [m['id'] for m in ment]
+        return f"<@{self.id}>" in msg["content"]
     def getResponseToNewMessage(self, msg):
         body = msg["content"].lstrip()
         if body.startswith("!"):
