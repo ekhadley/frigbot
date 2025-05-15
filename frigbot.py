@@ -14,7 +14,7 @@ from chat import ChatAssistant
 from completions import CompletionManager
 
 from utils import red, endc, yellow, bold, cyan, gray, green, aendc, rankColors, abold
-from utils import loadjson
+from utils import loadjson, contains_scrambled
 
 class Frig:
     def __init__(self, keypath, configDir, chat_id):
@@ -128,7 +128,7 @@ class Frig:
         elif self.asst.requiresResponse(msg) or self.botTaggedInMessage(msg):
             print(f"{bold}{gray}[FRIG]: {endc}{yellow} chat completion requested via reply{endc}")
             return self.chat_resp(msg)
-        elif random.random() > 0.9 and contains_scrambled(msg['content'], "itysl"):
+        elif random.random() > 0.0 and contains_scrambled(msg['content'], "itysl"):
             return self.itysl_reference_resp()
         return None
 
