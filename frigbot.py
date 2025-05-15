@@ -128,7 +128,7 @@ class Frig:
         elif self.asst.requiresResponse(msg) or self.botTaggedInMessage(msg):
             print(f"{bold}{gray}[FRIG]: {endc}{yellow} chat completion requested via reply{endc}")
             return self.chat_resp(msg)
-        elif random.random() > 0.0 and contains_scrambled(msg['content'], "itysl"):
+        elif random.random() > 0.9 and contains_scrambled(msg['content'], "itysl"):
             return self.itysl_reference_resp()
         return None
 
