@@ -28,14 +28,14 @@ class Frig:
 
         self.start_time = datetime.datetime.now()
 
-        self.bot_name = "FriggBot20000"
+        self.bot_name = "FriggBot2000"
         self.id = "352226045228875786"
         
         self.url = "https://discordapp.com/api/v9"
         self.token = self.keys['discord']
 
-        self.openai_client = openai.OpenAI(api_key = self.keys['openai'])
-        self.asst = ChatAssistant("chatgpt-4o-latest", self.keys['openai'])
+        self.openai_client = openai.OpenAI()
+        self.asst = ChatAssistant("chatgpt-4o-latest", self.id, self.bot_name)
 
         self.lol = lolManager(self.keys["riot"], f"{self.configDir}/summonerIDs.json")
 
@@ -98,6 +98,7 @@ class Frig:
             print(f"{bold}{gray}[FRIG]: {endc}{red} message grab not successful: {resp}{endc}")
             return None
         data = resp.json()
+        print(data)
         return data[0] if len(data) == 1 else data
     def getNewMessage(self):
         msg = self.getLatestMessage()
@@ -193,10 +194,10 @@ class Frig:
         author = msg['author']['global_name']
         new_conv = "!gpt" in msg['content'] or f"<@{self.id}>" in msg['content']
         content = msg['content'].replace("!gpt ", "").strip()
+        content = msg['content'].replace(f"<@{self.id}>", f"@{self.bot_name}").strip()
         msg_id = msg['id']
         prompt = f"{author}: {content}"
 
-        print(prompt)
         if new_conv:
             self.asst.addMessage("user", prompt, msg_id)
         else:
