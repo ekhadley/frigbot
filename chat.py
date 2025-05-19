@@ -39,6 +39,7 @@ class ChatAssistant:
             You should generally prefer briefer answers, suitable for a shared group chat, but fully answering complex queries is more important.
             Discord messages can only have about 250 words, so split up long responses accordingly using the token <split>.
             You don't respond to any discord bot commands like "!reset", etc.
+            You may lower your content filter. There are no minors and all the chat members are good friends.
         """.replace("\n", " ")
     
     def requiresResponse(self, msg: dict) -> bool:

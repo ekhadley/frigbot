@@ -98,7 +98,6 @@ class Frig:
             print(f"{bold}{gray}[FRIG]: {endc}{red} message grab not successful: {resp}{endc}")
             return None
         data = resp.json()
-        print(data)
         return data[0] if len(data) == 1 else data
     def getNewMessage(self):
         msg = self.getLatestMessage()
