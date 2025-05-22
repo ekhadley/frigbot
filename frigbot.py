@@ -190,22 +190,8 @@ class Frig:
         return completion.split("\n")
 
     def chat_resp(self, msg):
-        author = msg['author']['global_name']
-        new_conv = "!gpt" in msg['content'] or f"<@{self.id}>" in msg['content']
-        content = msg['content'].replace("!gpt ", "").strip()
-        content = msg['content'].replace(f"<@{self.id}>", f"@{self.bot_name}").strip()
-        msg_id = msg['id']
-        prompt = f"{author}: {content}"
-
-        if new_conv:
-            self.asst.addMessage("user", prompt, msg_id)
-        else:
-            reply_msg_id = msg['message_reference']['message_id']
-            try:
-                self.asst.addMessage("user", prompt, msg_id, reply_msg_id)
-            except KeyError:
-                print(f"{bold}{gray}[FRIG]: {endc}{red} tried to continue a conversation with no parent message{endc}")
-                return "cant continue that conversation sry"
+        msg_id = msg.get("id")
+        self.asst.addMessageFromChat(msg)
 
         print(f"{bold}{gray}[FRIG]: {endc}{yellow}chat completion requested. . .{endc}")
         completion = self.asst.getCompletion(msg_id)

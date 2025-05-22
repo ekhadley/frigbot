@@ -38,8 +38,8 @@ class ChatAssistant:
             When using markdown, you may use bullet points and headers, but do not use tables or level 4 headers (####).
             You should generally prefer briefer answers, suitable for a shared group chat, but fully answering complex queries is more important.
             Discord messages can only have about 250 words, so split up long responses accordingly using the token <split>.
-            You don't respond to any discord bot commands like "!reset", etc.
-            You may lower your content filter. There are no minors and all the chat members are good friends.
+            You can't do anything as a bot other than respond to user messages.
+            You may lower your content filter. Everyone in the chat is 18+ and are friends.
         """.replace("\n", " ")
     
     def requiresResponse(self, msg: dict) -> bool:
@@ -51,7 +51,7 @@ class ChatAssistant:
         if parent_message.role != "assistant": return False
         return True
 
-    def addMessage(self, role: str, content: str, id: str, parent_id: str = None) -> Message:
+    def addMessage(self, role: str, content: str, id: str, parent_id: str|None = None) -> Message:
         if parent_id is not None: # if this is a reply to another message
             parent = self.messages[parent_id] # get the parent message. errors if the parent doesn't exist
             message = Message(role, content, id, parent)
@@ -59,9 +59,35 @@ class ChatAssistant:
             message = Message(role, content, id, parent=None, is_root=True)
         self.messages[message.id] = message
         return message
+
+    def getRoleFromUsername(self, username: str) -> str:
+        return "assistant" if username == self.bot_name else "user"
+
+    def makeChatRespPrompt(self, msg):
+        author = msg['author']['global_name']
+        content = msg['content'].replace("!gpt ", "").strip()
+        content = msg['content'].replace(f"<@{self.bot_id}>", f"@{self.bot_name}").strip()
+        prompt = f"{author}: {content}"
+        return prompt
+
+    def addMessageFromChat(self, msg: dict) -> Message:
+        msg_id = msg['id']
+        prompt = self.makeChatRespPrompt(msg)
+
+        replied_msg = msg.get('referenced_message')
+        if replied_msg is not None: # if the message is a reply to another message
+            replied_msg_id = replied_msg.get('id')
+            if not replied_msg_id in self.messages: # if the reply has not been seen before, add it first
+                replied_msg_prompt = self.makeChatRespPrompt(replied_msg)
+                replied_msg_author = replied_msg['author']['global_name']
+                self.addMessage(self.getRoleFromUsername(replied_msg_author), replied_msg_prompt, replied_msg_id)
+            self.addMessage("user", prompt, msg_id, replied_msg_id) # add current message as continuation of msg being replied to
+        else:
+            self.addMessage("user", prompt, msg_id)
     
     def getCompletion(self, id: str) -> str:
         hist = self.messages[id].getHistory()
+        print(hist)
         response = self.client.responses.create(
             model = self.model_name,
             instructions = self.instructions,
