@@ -87,7 +87,6 @@ class ChatAssistant:
     
     def getCompletion(self, id: str) -> str:
         hist = self.messages[id].getHistory()
-        print(hist)
         response = self.client.responses.create(
             model = self.model_name,
             instructions = self.instructions,
