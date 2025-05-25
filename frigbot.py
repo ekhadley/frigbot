@@ -35,7 +35,8 @@ class Frig:
         self.token = self.keys['discord']
 
         self.openai_client = openai.OpenAI()
-        self.asst = ChatAssistant("chatgpt-4o-latest", self.id, self.bot_name)
+        #self.asst = ChatAssistant("chatgpt-4o-latest", self.id, self.bot_name)
+        self.asst = ChatAssistant("claude-sonnet-4-20250514", self.id, self.bot_name)
 
         self.lol = lolManager(self.keys["riot"], f"{self.configDir}/summonerIDs.json")
 
