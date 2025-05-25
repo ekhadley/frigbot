@@ -106,6 +106,7 @@ class ChatAssistant:
         if self.provider == "anthropic":
             response = self.client.messages.create(
                 model=self.model_name,
+                max_tokens=1024,
                 system=self.instructions,
                 messages=hist
             )
