@@ -70,7 +70,7 @@ class Frig:
             ["Do not go gentle into that good juckyard.", "Tetus should burn and rave at close of day.", "Rage, rage against the dying of the gamings.", "Though wise men at their end know gaming is right,", "Becuase their plays had got no karma they", "Do not go gentle into that good juckyard"]
         ]
         
-    def send(self, msg, reply_msg_id = None, files=None): # sends a string/list of strings as a message/messages in the chat. optinally replies to a previous message.
+    def send(self, msg, reply_msg_id = None, files=None): # sends a string/list of strings as a message/messages in the chat. optionally replies to a previous message.
         if isinstance(msg, list): return [self.send(m, reply_msg_id) for m in msg]
         elif msg is not None or files is not None:
             if reply_msg_id is None:
