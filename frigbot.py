@@ -199,9 +199,8 @@ class Frig:
         split_completion = completion.replace("\n\n", "\n").strip().split("<split>")
 
         resps = self.send(split_completion, reply_msg_id = msg_id)
-        #for comp, resp in zip(split_completion, resps):
-        for resp in resps:
-            self.asst.addMessage("assistant", completion, resp["id"], msg_id)
+        for comp, resp in zip(split_completion, resps):
+            self.asst.addMessage("assistant", comp, resp["id"], msg_id)
 
     def gpt_img_resp(self, msg):
         prompt = msg['content'].replace("!img", "").strip()
