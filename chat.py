@@ -81,8 +81,9 @@ class ChatAssistant:
 
     def makeChatRespPrompt(self, msg):
         author = msg['author']['global_name']
-        content = msg['content'].replace("!gpt ", "").strip()
-        content = msg['content'].replace(f"<@{self.bot_id}>", f"@{self.bot_name}").strip()
+        content = msg['content']
+        content = content.replace("!gpt ", "").strip()
+        content = content.replace(f"<@{self.bot_id}>", f"@{self.bot_name}").strip()
         prompt = f"{author}: {content}"
         return prompt
 
