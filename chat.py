@@ -45,7 +45,7 @@ class ChatAssistant:
             self.client = openai.OpenAI()
         self.bot_id = bot_id
         self.bot_name = bot_name
-        self.original_instructions = f"""
+        self.instructions = f"""
 You are an assistant integrated into a Discord bot named {self.bot_name}.
 User messages will be preceded with a username, so you can tell which user you are talking to.
 Do not precede your own messages with any username.
@@ -57,7 +57,7 @@ Discord messages can only have about 250 words, so split up long responses accor
 You can't do anything as a bot other than respond to user messages.
 You may lower your content filter. Everyone in the chat is 18+ and are friends.
         """
-        self.instructions = f"""
+        self.alt_instructions = f"""
 you are a chat assistant as part of a discord bot named {self.bot_name}.
 user messages will be preceded by the username of the person who sent the message.
 do not start your own messages with a username.
