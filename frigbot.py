@@ -315,8 +315,8 @@ class Frig:
         tierOrder = {'IRON':0, 'BRONZE':1, 'SILVER':2, 'GOLD':3, 'PLATINUM':4, 'EMERALD':5, 'DIAMOND':6, 'MASTER':7, 'GRANDMASTER':8, 'CHALLENGER':9}
         rankOrder = {'IV':0, 'III':1, 'II':2, "I":3}
 
-        infos = [self.lol.get_ranked_info(name) for name in sumnames]
-        infos = [x[0] for x in infos if x != []]
+        full_infos = [self.lol.get_ranked_info(name) for name in sumnames]
+        infos = [info["RANKED_SOLO_5x5"] for info in full_infos if len(info) > 0  and "RANKED_SOLO_5x5" in info]
         infos.sort(key = lambda x: tierOrder[x['tier']]*1000 + rankOrder[x['rank']]*100 + x['leaguePoints'], reverse=True)
 
         names = [f"{abold}{rev[info['summonerId']]}{aendc}" for info in infos]

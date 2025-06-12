@@ -41,7 +41,11 @@ class lolManager: # this handles requests to the riot api
         get = requests.get(url)
         if get.status_code == 200:
             print(f"{gray}{bold}[LOL]: {endc}{green}ranked info acquired for '{summonerName}'{endc}")
-            return get.json(parse_float=float, parse_int=int)
+            raw_info = get.json(parse_float=float, parse_int=int)
+            full_info = {}
+            for specific_queue_info in raw_info:
+                full_info[specific_queue_info["queueType"]] = specific_queue_info
+            return full_info
         elif get.status_code == 403:
             print(f"{gray}{bold}[LOL]: {endc}{red}got 403 for name '{summonerName}'. key is probably expired. {endc}")
             return f"got 403 for name '{summonerName}'. key is probably expired. blame riot request url:\n{url}"
