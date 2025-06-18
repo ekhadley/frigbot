@@ -62,12 +62,12 @@ class Frig:
             "!sus": self.sus_resp,
             "!imposter": self.imposter_resp,
             "!uptime": self.uptime_resp,
+            "!poem": self.poem_resp,
             #"!locate_xylotile": self.locate_xylotile_resp
         }
 
         self.echo_resps = [ # the static repsonse messages for trigger words which I term "echo" responses (deprecated, i just keep these here cuz its good pasta)
             "This computer is shared with others including parents. This is a parent speaking to you to now. Not sure what this group is up to. I have told my son that role playing d and d games are absolutely forbidden in out household. We do not mind him having online friendships with local people that he knows for legitimate purposes. Perhaps this is an innocent group. But, we expect transparency in our son's friendships and acquaintances. If you would like to identify yourself now and let me know what your purpose for this platform is this is fine. You are welcome to do so.",
-            ["Do not go gentle into that good juckyard.", "Tetus should burn and rave at close of day.", "Rage, rage against the dying of the gamings.", "Though wise men at their end know gaming is right,", "Becuase their plays had got no karma they", "Do not go gentle into that good juckyard"]
         ]
         
     def send(self, msg, reply_msg_id = None, files=None): # sends a string/list of strings as a message/messages in the chat. optionally replies to a previous message.
@@ -147,6 +147,8 @@ class Frig:
                 traceback.print_exc()
                 time.sleep(3)
 
+    def poem_resp(self, *args, **kwargs):
+        return ["Do not go gentle into that good juckyard.", "Tetus should burn and rave at close of day.", "Rage, rage against the dying of the gamings.", "Though wise men at their end know gaming is right,", "Becuase their plays had got no karma they", "Do not go gentle into that good juckyard"]
     def coinflip_resp(self, *args, **kwargs):
         return random.choice(['heads', 'tails'])
 
