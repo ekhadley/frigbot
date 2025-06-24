@@ -38,10 +38,9 @@ class Frig:
         self.asst = ChatAssistant("chatgpt-4o-latest", self.id, self.bot_name)
         #self.asst = ChatAssistant("claude-sonnet-4-20250514", self.id, self.bot_name)
 
-        self.lol = lolManager(self.keys["riot"], f"{self.configDir}/summonerIDs.json")
+        self.lol = lolManager(self.keys["riot"], f"{self.configDir}/summonerPUUIDs.json")
 
         self.completer = CompletionManager(self.keys['runpod'])
-
         self.commands = {
             "!help":self.help_resp, # a dict of associations between commands (prefaced with a '!') and the functions they call to generate responses.
             "!commands":self.help_resp,
@@ -321,7 +320,7 @@ class Frig:
         infos = [info["RANKED_SOLO_5x5"] for info in full_infos if len(info) > 0  and "RANKED_SOLO_5x5" in info]
         infos.sort(key = lambda x: tierOrder[x['tier']]*1000 + rankOrder[x['rank']]*100 + x['leaguePoints'], reverse=True)
 
-        names = [f"{abold}{rev[info['summonerId']]}{aendc}" for info in infos]
+        names = [f"{abold}{rev[info['puuid']]}{aendc}" for info in infos]
         ranks = [f"{rankColors[info['tier']]}{info['tier'].lower().capitalize()} {info['rank']}{aendc} " for info in infos]
         winrates = [f"[{info['wins']/(info['wins'] + info['losses']):.3f} over {info['wins']+info['losses']} games]" for info in infos]
 
@@ -330,7 +329,7 @@ class Frig:
 
         resp = "```ansi\n"
         for i, info in enumerate(infos):
-            resp += names[i] + " "*(namepad-len(rev[info['summonerId']])) + ranks[i] + " "*(rankpad-len(info['tier']+info['rank'])) + f"{info['leaguePoints']} LP " + winrates[i]
+            resp += names[i] + " "*(namepad-len(rev[info['puuid']])) + ranks[i] + " "*(rankpad-len(info['tier']+info['rank'])) + f"{info['leaguePoints']} LP " + winrates[i]
             if 'xylotile' in names[i]:
                 resp += " (0/1 vs ap)"
             elif 'dragondude' in names[i]:
