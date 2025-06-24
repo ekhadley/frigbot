@@ -9,23 +9,6 @@ class lolManager: # this handles requests to the riot api
         self.riotkey = riotkey
         self.summonerIDs = loadjson(savePath)
 
-        """
-        puuids = {}
-        for name, sumid in self.summonerIDs.items():
-            url = f"https://americas.api.riotgames.com/riot/account/v1/accounts/by-riot-id/{name}/NA1?api_key=RGAPI-825a3730-5b92-4667-b7e9-992d43bb0658"
-            get = requests.get(url)
-            if get.status_code == 200:
-                raw_info = get.json(parse_float=float, parse_int=int)
-                puuid = raw_info["puuid"]
-                puuids[name] = puuid
-                print(f"puuid for {name}#NA1 found: '{puuid}'")
-            else:
-                print(f"no puuid found for {name}")
-
-        with open("/home/ek/wgmn/frigbot/config/puuids.json", "w+") as f:
-            f.write(json.dumps(puuids, indent=4))
-        """
-
     def load_player_ids(self):
         with open(self.savePath, 'r') as f:
             return json.load(f)
