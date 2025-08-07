@@ -35,7 +35,8 @@ class Frig:
         self.token = self.keys['discord']
 
         self.openai_client = openai.OpenAI()
-        self.asst = ChatAssistant("chatgpt-4o-latest", self.id, self.bot_name)
+        self.asst = ChatAssistant("gpt-5", self.id, self.bot_name)
+        #self.asst = ChatAssistant("chatgpt-4o-latest", self.id, self.bot_name)
         #self.asst = ChatAssistant("claude-sonnet-4-20250514", self.id, self.bot_name)
 
         self.lol = lolManager(self.keys["riot"], f"{self.configDir}/summonerPUUIDs.json")
@@ -365,8 +366,11 @@ class Frig:
 
     def locate_xylotile_resp(self, *args, **kwargs):
         icloud = pyicloud.PyiCloudService("william.carrillo0415@icloud.com", self.keys['xylotile_icloud'])
+        print(icloud)
         phone = icloud.iphone
+        print(phone)
         location = phone.location()
+        print(location)
         link = f"https://maps.google.com/?q={location['latitude']},{location['longitude']}"
         return ["Xylotile is currently here:", link]
     

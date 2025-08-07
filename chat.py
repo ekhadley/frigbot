@@ -4,18 +4,6 @@ import json
 import openai
 import anthropic
 
-
-def get_provider_from_model(model_name: str) -> str:
-    """Determine the provider based on model name."""
-    if model_name.startswith(("claude-", "claude3-")) or "claude" in model_name.lower():
-        return "anthropic"
-    elif model_name.startswith(("gpt-", "chatgpt-", "o1-")) or "gpt" in model_name.lower():
-        return "openai"
-    else:
-        # Default to openai for unknown models
-        return "openai"
-
-
 class Message:
     def __init__(self, role: str, content: str, id: str = None, parent: str = None, is_root: bool = False):
         self.role = role
@@ -38,11 +26,7 @@ class ChatAssistant:
     def __init__(self, model_name: str, bot_id: str, bot_name: str):
         self.model_name = model_name
         self.messages = {}
-        self.provider = get_provider_from_model(model_name)
-        if self.provider == "anthropic": 
-            self.client = anthropic.Anthropic()
-        elif self.provider == "openai": 
-            self.client = openai.OpenAI()
+        self.client = openai.OpenAI()
         self.bot_id = bot_id
         self.bot_name = bot_name
         self.instructions = f"""
@@ -123,21 +107,24 @@ take however smart you're acting right now and write in the same style but as if
         else:
             self.addMessage("user", prompt, msg_id)
     
-    def getCompletion(self, id: str) -> str:
+    def getModelResponse(self, id: str):
         hist = self.messages[id].getHistory()
-        if self.provider == "anthropic":
-            response = self.client.messages.create(
-                model=self.model_name,
-                max_tokens=1024,
-                system=self.instructions,
-                messages=hist
-            )
-            content = response.content[0].text
-        elif self.provider == "openai":
-            response = self.client.responses.create(
-                model = self.model_name,
-                instructions = self.instructions,
-                input = hist,
-            )
-            content = response.output[0].content[0].text
-        return content
+        return self.client.responses.create(
+            model = self.model_name,
+            instructions = self.instructions,
+            input = hist,
+            text={
+                "verbosity": "low"
+            },
+            reasoning={
+                "summary": "auto"    
+            }
+        )
+    def getCompletion(self, id: str) -> str:
+        response = self.getModelResponse(id)
+        #print(json.dumps(response.to_dict(), indent=2))
+        #content = response.output[0].content[0].text
+        text_outputs = [out.content for out in response.output if out.type == "message"]
+        text_content = "".join(["".join([out.text for out in text_output]) for  text_output in text_outputs])
+        return text_content
+
