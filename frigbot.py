@@ -136,7 +136,6 @@ class Frig:
     def runloop(self):
         print(bold, cyan, "\nFrigBot started!", endc)
         try:
-            self.set_status("online")
             while 1:
                 try:
                     is_new, msg = self.getNewMessage()
@@ -148,11 +147,6 @@ class Frig:
                     print(f"{red}, {bold}, [FRIG] crashed with exception:\n{e}")
                     traceback.print_exc()
                     time.sleep(3)
-        finally:
-            try:
-                self.set_status("invisible")
-            except Exception:
-                pass
 
     def poem_resp(self, *args, **kwargs):
         return ["Do not go gentle into that good juckyard.", "Tetus should burn and rave at close of day.", "Rage, rage against the dying of the gamings.", "Though wise men at their end know gaming is right,", "Becuase their plays had got no karma they", "Do not go gentle into that good juckyard"]
@@ -387,13 +381,3 @@ class Frig:
 
     def wait(self):
         time.sleep(self.loop_delay)
-
-    def set_status(self, status: str):
-        try:
-            requests.patch(
-                f"{self.url}/users/@me/settings",
-                headers={"Authorization": self.token},
-                json={"status": status}
-            )
-        except Exception:
-            pass
