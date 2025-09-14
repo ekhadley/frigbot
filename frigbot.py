@@ -135,18 +135,17 @@ class Frig:
 
     def runloop(self):
         print(bold, cyan, "\nFrigBot started!", endc)
-        try:
-            while 1:
-                try:
-                    is_new, msg = self.getNewMessage()
-                    if is_new:
-                        resp = self.getResponseToNewMessage(msg)
-                        self.send(resp)
-                    self.wait()
-                except Exception as e:
-                    print(f"{red}, {bold}, [FRIG] crashed with exception:\n{e}")
-                    traceback.print_exc()
-                    time.sleep(3)
+        while 1:
+            try:
+                is_new, msg = self.getNewMessage()
+                if is_new:
+                    resp = self.getResponseToNewMessage(msg)
+                    self.send(resp)
+                self.wait()
+            except Exception as e:
+                print(f"{red}, {bold}, [FRIG] crashed with exception:\n{e}")
+                traceback.print_exc()
+                time.sleep(3)
 
     def poem_resp(self, *args, **kwargs):
         return ["Do not go gentle into that good juckyard.", "Tetus should burn and rave at close of day.", "Rage, rage against the dying of the gamings.", "Though wise men at their end know gaming is right,", "Becuase their plays had got no karma they", "Do not go gentle into that good juckyard"]

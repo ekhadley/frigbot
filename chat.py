@@ -116,7 +116,7 @@ take however smart you're acting right now and write in the same style but as if
             text={
                 "verbosity": "low"
             },
-            #reasoning={"summary": "auto"}
+            reasoning={"summary": "auto"}
         )
     def getCompletion(self, id: str) -> str:
         response = self.getModelResponse(id)
