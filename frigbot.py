@@ -5,6 +5,7 @@ import time
 import json
 import requests
 import traceback
+from openai import OpenAI
 
 from lolManager import lolManager
 from chat import ChatAssistant
@@ -38,6 +39,7 @@ class Frig:
         self.current_chat_model = "openai/gpt-5"
         self.current_image_model = "openai/gpt-image-1"
         self.asst = ChatAssistant(self.current_chat_model, self.current_image_model, self.id, self.bot_name, self.keys['openrouter'])
+        self.openai_client = OpenAI()
         #self.asst = ChatAssistant("anthropic/claude-opus-4.1", self.id, self.bot_name)
         #self.asst = ChatAssistant("x-ai/grok-4", self.id, self.bot_name)
         #self.asst = ChatAssistant("google/gemini-2.5-pro", self.id, self.bot_name, self.keys['openrouter'])
@@ -52,7 +54,6 @@ class Frig:
             "!setmodel":self.set_chat_model,
             "!setimgmodel":self.set_image_model,
             "!img":self.img_resp,
-            "!gpt_img":self.gpt_img_resp,
             "!rps":self.rps_resp,
             "!gif":self.random_gif_resp,
             "!roll":self.roll_resp,
@@ -189,10 +190,12 @@ class Frig:
             self.asst.addMessage("assistant", comp, resp["id"], msg_id)
     def img_resp(self, msg):
         prompt = msg['content'].replace("!img", "").strip()
-        if self.current_image_model == "gpt-image-1":
+        if self.current_image_model == "openai/gpt-image-1":
             self.gpt_img_resp(msg)
         else:
             resp = self.asst.getImageGenResp(prompt)
+            with open("resp.json", "w+") as f:
+                f.write(json.dumps(resp, indent=2))
             message = resp["choices"][0]["message"]
             self.send(message['content'])
             if "images" in message:
@@ -211,6 +214,7 @@ class Frig:
                     moderation="low",
                     quality="high",
                 )
+            print(resp)
         except Exception as e:
             if e.code == "moderation_blocked":
                 return "no porn!!!"
@@ -218,6 +222,7 @@ class Frig:
 
         img_b64 = resp.data[0].b64_json
         img_bytes = base64.b64decode(img_b64)
+        print(f"{bold}{gray}[FRIG]: {endc}{yellow}image generated successfully{endc}")
         self.send("", files={"file": ("output.png", img_bytes)})
 
     def help_resp(self, msg):
@@ -226,9 +231,8 @@ class Frig:
             "!commands": "Alias for !help.",
             "!cmds": "Alias for !help.",
             "!img": "Generates an image.",
-            "!gpt_img": "Generates an image using gpt-image-1.",
-            "!setmodel": "Sets the chat model. Usage: `!setmodel provider/model_name`. [Available chat models](<{self.asst.available_chat_models_link}>)",
-            "!setimgmodel": "Sets the image model. Usage: `!setimgmodel provider/model_name`. [Available image models](<{self.asst.available_image_models_link}>)",
+            "!setmodel": f"Sets the chat model. Usage: `!setmodel provider/model_name`. [Available chat models](<{self.asst.available_chat_models_link}>)",
+            "!setimgmodel": f"Sets the image model. Usage: `!setimgmodel provider/model_name`. [Available image models](<{self.asst.available_image_models_link}>)",
             "!rps": "Play rock-paper-scissors with the bot. Usage: `!rps [rock|paper|scissors]`.",
             "!gif": "Searches for a random GIF. Usage: `!gif [search term]`.",
             "!roll": "Rolls a random number. Usage: `!roll [max value]`.",
