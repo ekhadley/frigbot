@@ -100,7 +100,7 @@ Don't say the word chaos.
 
     def getCompletion(self, id: str) -> str:
         response = self.getModelResponse(id)
-        print(json.dumps(response.to_dict(), indent=2))
+        print(json.dumps(response, indent=2))
         text_outputs = [out.content for out in response.output if out.type == "message"]
         text_content = "".join(["".join([out.text for out in text_output]) for  text_output in text_outputs])
         return text_content
