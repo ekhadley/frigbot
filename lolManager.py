@@ -1,26 +1,18 @@
 import json
 import requests
 from utils import gray, bold, endc, yellow, blue, green, red
-from utils import loadjson
 
 class lolManager: # this handles requests to the riot api
-    def __init__(self, riotkey, savePath):
-        self.savePath = savePath
-        self.riotkey = riotkey
-        self.summonerIDs = loadjson(savePath)
-
-    def load_player_ids(self):
-        with open(self.savePath, 'r') as f:
-            return json.load(f)
-    
-    def store_player_ids(self):
-        with open(self.savePath, "w") as f:
-            f.write(json.dumps(self.summonerIDs, indent=4))
+    def __init__(self, riot_key: str, puuids_path: str):
+        self.riot_key = riot_key
+        self.puuids_path = puuids_path
+        with open(puuids_path) as f:
+            self.summoner_puuids = json.load(f)
 
     def get_ranked_info(self, sum_name, region=None):
         region = "na1" if region is None else region
-        puuid = self.summonerIDs[sum_name]
-        url = f"https://{region}.api.riotgames.com/lol/league/v4/entries/by-puuid/{puuid}?api_key={self.riotkey}"
+        puuid = self.summoner_puuids[sum_name]
+        url = f"https://{region}.api.riotgames.com/lol/league/v4/entries/by-puuid/{puuid}?api_key={self.riot_key}"
         get = requests.get(url)
         if get.status_code == 200:
             print(f"{gray}{bold}[LOL]: {endc}{green}ranked info acquired for '{sum_name}'{endc}")
@@ -43,7 +35,7 @@ class lolManager: # this handles requests to the riot api
     def match_history(self, summonerName, region=None):
         region = "americas" if region is None else region
         #summonerID = self.get_summoner_id(summonerName, region)
-        url = f"https://{region}.api.riotgames.com/lol/match/v5/matches/NA1_5004846015?api_key={self.riotkey}"
+        url = f"https://{region}.api.riotgames.com/lol/match/v5/matches/NA1_5004846015?api_key={self.riot_key}"
         get = requests.get(url)
         
         with open('data.json', 'w', encoding='utf-8') as f:
@@ -61,4 +53,4 @@ class lolManager: # this handles requests to the riot api
 
 
     def list_known_summoners(self, *args, **kwargs):
-        return "".join([f"{k}\n" for k, v in self.summonerIDs.items()])
+        return "".join([f"{k}\n" for k, v in self.summoner_puuids.items()])

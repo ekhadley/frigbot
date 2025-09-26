@@ -8,46 +8,51 @@ import traceback
 
 from lolManager import lolManager
 from chat import ChatAssistant
-from completions import CompletionManager
 
 from utils import red, endc, yellow, bold, cyan, gray, green, aendc, rankColors, abold
-from utils import loadjson, contains_scrambled
+from utils import contains_scrambled
 
 class Frig:
-    def __init__(self, keypath, configDir, chat_id):
+    def __init__(
+        self,
+        keys_path: str,
+        chat_id: str,
+        state_dict_path: str|None = None,
+    ):
         self.last_msg_id = 0 # unique message id. Used to check if a new message has been already seen
-        self.last_self_msg_id = 0
         self.loop_delay = 2.0 # delay in seconds between checking for new mesages
         self.chat_id = chat_id
-        self.keypath = keypath
-        self.configDir = configDir
-        self.read_saved_state()
+
+        self.keys_path = keys_path
+        with open(keys_path) as f:
+            self.keys = json.load(f)
 
         self.start_time = datetime.datetime.now()
+        self.state_dict_path = state_dict_path
 
         self.bot_name = "FriggBot2000"
         self.id = "352226045228875786"
-        
         self.url = "https://discordapp.com/api/v9"
         self.token = self.keys['discord']
 
-        self.asst = ChatAssistant("openai/gpt-5", self.id, self.bot_name, self.keys['openrouter'])
+        self.current_chat_model = "openai/gpt-5"
+        self.current_image_model = "openai/gpt-image-1"
+        self.asst = ChatAssistant(self.current_chat_model, self.current_image_model, self.id, self.bot_name, self.keys['openrouter'])
         #self.asst = ChatAssistant("anthropic/claude-opus-4.1", self.id, self.bot_name)
         #self.asst = ChatAssistant("x-ai/grok-4", self.id, self.bot_name)
         #self.asst = ChatAssistant("google/gemini-2.5-pro", self.id, self.bot_name, self.keys['openrouter'])
 
-        self.lol = lolManager(self.keys["riot"], f"{self.configDir}/summonerPUUIDs.json")
+        self.lol = lolManager(self.keys["riot"], "summonerPUUIDs.json")
 
-        self.completer = CompletionManager(self.keys['runpod'])
         self.commands = {
             "!help":self.help_resp, # a dict of associations between commands (prefaced with a '!') and the functions they call to generate responses.
             "!commands":self.help_resp,
             "!cmds":self.help_resp,
             "!got":self.got_resp,
-            "!img":self.gpt_img_resp,
-            #"!gpt":self.gpt_resp,
-            "!gpt":self.chat_resp,
-            #"!gpts":self.gpt_search_resp,
+            "!setmodel":self.set_chat_model,
+            "!setimgmodel":self.set_image_model,
+            "!img":self.img_resp,
+            "!gpt_img":self.gpt_img_resp,
             "!rps":self.rps_resp,
             "!gif":self.random_gif_resp,
             "!roll":self.roll_resp,
@@ -55,12 +60,8 @@ class Frig:
             "!piggies":self.group_lp_resp,
             "!registeredsexoffenders":self.lol.list_known_summoners,
             "!coin": self.coinflip_resp,
-            "!coinflip": self.coinflip_resp,
-            "!sus": self.sus_resp,
-            "!imposter": self.imposter_resp,
             "!uptime": self.uptime_resp,
             "!poem": self.poem_resp,
-            #"!locate_xylotile": self.locate_xylotile_resp
         }
 
         self.echo_resps = [ # the static repsonse messages for trigger words which I term "echo" responses (deprecated, i just keep these here cuz its good pasta)
@@ -149,45 +150,31 @@ class Frig:
     def coinflip_resp(self, *args, **kwargs):
         return random.choice(['heads', 'tails'])
 
-    def read_saved_state(self):
-        self.user_IDs = loadjson(self.configDir, "userIDs.json")
-        self.rps_scores = loadjson(self.configDir, "rpsScores.json")
-        self.keys = loadjson(self.keypath)
-
     def itysl_reference_resp(self, query="itysl", num=500):
         return self.randomgif(query, num)
 
-    def sus_resp(self, msg, **kwargs):
-        try:
-            history_len = int(msg['content'].split(" ")[1])
-        except Exception:
-            history_len = 50
-        print(f"{bold}{gray}[SUS]: {endc}{yellow}ai continuation requested{endc}")
-        history_len = min(max(2, history_len), 100)
-        chat_history = self.getLatestMessage(num_messages=history_len)
-        chat_history = [msg for msg in chat_history if msg['author']['global_name'] != 'FriggBot2000' and "!sus" not in msg['content']]
-        print(f"{bold}{gray}[SUS]: {endc}{yellow}chat history succesfully recorded{endc}")
-        chat_ctx = self.completer.formatMessages(chat_history)
-        print(f"completing on chat context: '{repr(chat_ctx)}'")
-        print(f"{bold}{gray}[SUS]: {endc}{yellow}chat history formatted{endc}")
-        completion = self.completer.getCompletion(chat_ctx)
-        print(f"{bold}{gray}[SUS]: {endc}{green}continuation succesfully generated{endc}")
-        return completion.split("\n")
-    def imposter_resp(self, msg, **kwargs):
-        try:
-            imposter = msg['content'].split(" ")[1]
-        except Exception:
-            imposter = ""
-        print(f"{bold}{gray}[SUS]: {endc}{yellow}ai continuation requested{endc}")
-        chat_history = self.getLatestMessage(num_messages=25)
-        chat_history = [msg for msg in chat_history if msg['author']['global_name'] != 'FriggBot2000' and "!imposter" not in msg['content'] and "!sus" not in msg['content']]
-        print(f"{bold}{gray}[SUS]: {endc}{yellow}chat history succesfully recorded{endc}")
-        chat_ctx = self.completer.formatMessages(chat_history, tail=f"{imposter}: ")
-        print(f"completing on chat context: '{repr(chat_ctx)}'")
-        print(f"{bold}{gray}[SUS]: {endc}{yellow}chat history formatted{endc}")
-        completion = f"{imposter}: " + self.completer.getCompletion(chat_ctx)
-        print(f"{bold}{gray}[SUS]: {endc}{green}continuation succesfully generated{endc}")
-        return completion.split("\n")
+    def set_chat_model(self, msg: str):
+        msg_content = msg['content'] if isinstance(msg, dict) else msg
+        model_name = msg_content.replace("!setmodel", "").strip()
+        if self.asst.setChatModel(model_name):
+            self.current_chat_model = model_name
+            print(f"{bold}{gray}[FRIG]: {endc}{yellow}chat model set to '{model_name}'{endc}")
+            self.save_state()
+            return f"chat model set to {model_name}"
+        else:
+            print(f"{bold}{gray}[FRIG]: {endc}{red}no match found for chat model '{model_name}' {endc}")
+            return f"no model found for {model_name} [Available chat models](<{self.asst.available_chat_models_link}>)"
+    def set_image_model(self, msg: str):
+        msg_content = msg['content'] if isinstance(msg, dict) else msg
+        model_name = msg_content.replace("!setimgmodel", "").strip()
+        if model_name == "openai/gpt-image-1" or self.asst.setImageModel(model_name):
+            self.current_image_model = model_name
+            print(f"{bold}{gray}[FRIG]: {endc}{yellow}image model set to '{model_name}'{endc}")
+            self.save_state()
+            return f"image model set to {model_name}"
+        else:
+            print(f"{bold}{gray}[FRIG]: {endc}{red}no match found for image model '{model_name}' {endc}")
+            return f"no image-capable model found for {model_name} [Available image models](<{self.asst.available_image_models_link}>)"
 
     def chat_resp(self, msg):
         msg_id = msg.get("id")
@@ -200,6 +187,19 @@ class Frig:
         resps = self.send(split_completion, reply_msg_id = msg_id)
         for comp, resp in zip(split_completion, resps):
             self.asst.addMessage("assistant", comp, resp["id"], msg_id)
+    def img_resp(self, msg):
+        prompt = msg['content'].replace("!img", "").strip()
+        if self.current_image_model == "gpt-image-1":
+            self.gpt_img_resp(msg)
+        else:
+            resp = self.asst.getImageGenResp(prompt)
+            message = resp["choices"][0]["message"]
+            self.send(message['content'])
+            if "images" in message:
+                for img in message["images"]:
+                    img_b64 = img["image_url"]["url"].split(",")[1]
+                    img_bytes = base64.b64decode(img_b64)
+                    self.send("", files={"file": ("output.png", img_bytes)})
 
     def gpt_img_resp(self, msg):
         prompt = msg['content'].replace("!img", "").strip()
@@ -225,17 +225,17 @@ class Frig:
             "!help": "Displays this help message.",
             "!commands": "Alias for !help.",
             "!cmds": "Alias for !help.",
-            "!gpt": "Generates a response using GPT-4o.",
-            "!img": "Generates an image using gpt-image-1.",
+            "!img": "Generates an image.",
+            "!gpt_img": "Generates an image using gpt-image-1.",
+            "!setmodel": "Sets the chat model. Usage: `!setmodel provider/model_name`. [Available chat models](<{self.asst.available_chat_models_link}>)",
+            "!setimgmodel": "Sets the image model. Usage: `!setimgmodel provider/model_name`. [Available image models](<{self.asst.available_image_models_link}>)",
             "!rps": "Play rock-paper-scissors with the bot. Usage: `!rps [rock|paper|scissors]`.",
             "!gif": "Searches for a random GIF. Usage: `!gif [search term]`.",
             "!roll": "Rolls a random number. Usage: `!roll [max value]`.",
             "!lp": "Retrieves ranked info for a League of Legends summoner. Usage: `!lp [summoner name]`.",
-            "!piggies": "Displays ranked info for a group of predefined League of Legends players.",
+            "!piggies": "Displays ranked info for the whole chat.",
             "!registeredsexoffenders": "Lists all known League of Legends summoners in Frig's database.",
             "!coin": "Flips a coin.",
-            "!coinflip": "Alias for !coin.",
-            "!sus": "based on the last ~100 messages, generate an ai continuation of the conversation",
             "!uptime": "Shows how long Frig has been live without stopping."
         }
         resp = "Available commands:"
@@ -247,36 +247,37 @@ class Frig:
     def rps_resp(self, msg):
         rollname = msg["content"].replace("!rps", "").strip()
         authorid = msg["author"]["id"]
-        if authorid+"w" not in self.rps_scores:
+
+        win_key, draw_key, loss_key = f"{authorid}_w", f"{authorid}_d", f"{authorid}_l"
+
+        if win_key not in self.rps_scores:
             print(f"{bold}{gray}[RPS]: {endc}{yellow}new RPS player found {endc}")
-            self.rps_scores[authorid+"d"] = 0
-            self.rps_scores[authorid+"w"] = 0
-            self.rps_scores[authorid+"l"] = 0
+            self.rps_scores[draw_key] = 0
+            self.rps_scores[win_key] = 0
+            self.rps_scores[loss_key] = 0
         if rollname == "":
-            return f"Your score is {self.rps_scores[authorid+'w']}/{self.rps_scores[authorid+'d']}/{self.rps_scores[authorid+'l']}"
+            return f"Your score is {self.rps_scores[win_key]}/{self.rps_scores[draw_key]}/{self.rps_scores[loss_key]}"
 
         opts = ["rock", "paper", "scissors"]
         if rollname not in opts:
             return f"{rollname} is not an option. please choose one of {opts}"
         
         roll = opts.index(rollname)
-        if authorid == self.user_IDs["Xylotile"]:
-            botroll = random.choice([(roll+1)%3]*6 + [(roll+2)%3, roll])
-        else:
-            botroll = random.randint(0, 2)
+        botroll = random.randint(0, 2)
         if roll == botroll:
             report = f"We both chose {opts[botroll]}"
-            self.rps_scores[authorid+"d"] += 1
+            self.rps_scores[draw_key] += 1
         if (roll+2)%3 == botroll:
             report = f"I chose {opts[botroll]}. W"
-            self.rps_scores[authorid+"w"] += 1
+            self.rps_scores[win_key] += 1
         if (roll+1)%3 == botroll:
             report = f"I chose {opts[botroll]}. shitter"
-            self.rps_scores[authorid+"l"] += 1
+            self.rps_scores[loss_key] += 1
         print(f"bot rolled: {botroll} ({opts[botroll]}), user rolled {roll} ({opts[roll]})")
-        self.write_rps_scores()
         
-        update = f"Your score is now {self.rps_scores[authorid+'w']}/{self.rps_scores[authorid+'d']}/{self.rps_scores[authorid+'l']}"
+        self.save_state()
+        
+        update = f"Your score is now {self.rps_scores[win_key]}/{self.rps_scores[draw_key]}/{self.rps_scores[loss_key]}"
         return [report, update]
 
     def lp_resp(self, msg):
@@ -290,8 +291,7 @@ class Frig:
                 return "ap is still a bitch (not on the ranked grind)"
             return f"{name} is not on the ranked grind"
         try:
-            info = info[0]
-            #name = info["summonerName"]
+            info = info['RANKED_FLEX_SR']
             lp = info["leaguePoints"]
             wins = int(info["wins"])
             losses = int(info["losses"])
@@ -310,7 +310,7 @@ class Frig:
 
     def group_lp_resp(self, *args, **kwargs):
         sumnames = ["eekay", "xylotile", "dragondude", "maestrofluff", "smolyoshi"]
-        rev = {v:k for k, v in self.lol.summonerIDs.items()}
+        rev = {v:k for k, v in self.lol.summoner_puuids.items()}
         tierOrder = {'IRON':0, 'BRONZE':1, 'SILVER':2, 'GOLD':3, 'PLATINUM':4, 'EMERALD':5, 'DIAMOND':6, 'MASTER':7, 'GRANDMASTER':8, 'CHALLENGER':9}
         rankOrder = {'IV':0, 'III':1, 'II':2, "I":3}
 
@@ -328,17 +328,9 @@ class Frig:
         resp = "```ansi\n"
         for i, info in enumerate(infos):
             resp += names[i] + " "*(namepad-len(rev[info['puuid']])) + ranks[i] + " "*(rankpad-len(info['tier']+info['rank'])) + f"{info['leaguePoints']} LP " + winrates[i]
-            if 'xylotile' in names[i]:
-                resp += " (0/1 vs ap)"
-            elif 'dragondude' in names[i]:
-                resp += " (1/0 vs xylotile)"
             resp += "\n"
         resp += "```"
         return resp
-
-    def write_rps_scores(self):
-        with open(f"{self.configDir}/rpsScores.json", "w") as f:
-            f.write(json.dumps(self.rps_scores, indent=4))
 
     def got_resp(self, *args, **kwargs):
         return "https://tenor.com/view/sosig-gif-9357588"
@@ -361,19 +353,43 @@ class Frig:
         except Exception:
             return "choose an int > 0"
 
-    def locate_xylotile_resp(self, *args, **kwargs):
-        icloud = pyicloud.PyiCloudService("william.carrillo0415@icloud.com", self.keys['xylotile_icloud'])
-        print(icloud)
-        phone = icloud.iphone
-        print(phone)
-        location = phone.location()
-        print(location)
-        link = f"https://maps.google.com/?q={location['latitude']},{location['longitude']}"
-        return ["Xylotile is currently here:", link]
-    
     def uptime_resp(self, *args, **kwargs):
         delta = datetime.datetime.now() - self.start_time
         return f"uptime: {delta.days}d {delta.seconds // 3600}h {(delta.seconds % 3600) // 60}m {delta.seconds % 60}s"
 
     def wait(self):
         time.sleep(self.loop_delay)
+
+    def state_dict(self): 
+        return {
+            "keys_path": self.keys_path,
+            "chat_id": self.chat_id,
+            "current_chat_model": self.current_chat_model,
+            "current_image_model": self.current_image_model,
+            "rps_scores": self.rps_scores,
+            "start_time": self.start_time.isoformat(),
+            "save_time": datetime.datetime.now().isoformat(),
+        }
+    def save_state(self):
+        with open("state.json", "w") as f:
+            f.write(json.dumps(self.state_dict(), indent=2))
+    
+    @staticmethod
+    def load_from_state_dict(
+            path: str,
+            keys_path: str|None = None,
+            chat_id: str|None = None
+        ):
+        with open(path) as f:
+            saved_state = json.load(f)
+        frig = Frig(
+            keys_path=keys_path if keys_path is not None else saved_state["keys_path"],
+            chat_id=chat_id if chat_id is not None else saved_state["chat_id"],
+            state_dict_path=path,
+        )
+        frig.rps_scores = saved_state["rps_scores"]
+        frig.set_chat_model(saved_state["current_chat_model"])
+        frig.set_image_model(saved_state["current_image_model"])
+        print(f"{bold}{gray}[FRIG]: {endc}{yellow}loaded state dict from '{path}'{endc}")
+        frig.save_state()
+        return frig

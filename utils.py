@@ -47,38 +47,9 @@ def contains_scrambled(msg, key):
     return False
 
 
-def daterep(dat):
-    return dat.strftime("%Y-%b-%d (%H:%M:%S)")
-
 def split_resp(resp):
     if len(resp) >= 2000:
         nsplit = math.ceil(len(resp)/2000)
         interval = len(resp)//nsplit
         return [resp[i*interval:(i+1)*interval] for i in range(nsplit)]
     return resp
-
-def strptime(dstr): return datetime.datetime.strptime(dstr, "%Y-%b-%d (%H:%M:%S)")
-
-def dateload(*args):
-    assert 0 < (nargs:=len(args)) and nargs < 3, f"{red}found {len(args)} args{endc}. Expected 2 args (dir, name) or 1 (path)"
-    if len(args) == 1:
-        path = args[0]
-    else:
-        path = f"{args[0]}/{args[1]}"
-    path += "" if path.endswith('.txt') else '.txt'
-    with open(path) as f:
-        return strptime(f.readline().strip())
-
-def datesave(date, pth):
-    with open(pth, mode='w+') as f:
-        f.write(daterep(date))
-
-def loadjson(*args):
-    assert 0 < (nargs:=len(args)) and nargs < 3, f"{red}found {len(args)} args{endc}. Expected 2 args (dir, name) or 1 (path)"
-    if len(args) == 1:
-        path = args[0]
-    else:
-        path = f"{args[0]}/{args[1]}"
-    path += "" if path.endswith('.json') else '.json'
-    with open(path) as f:
-        return json.load(f)

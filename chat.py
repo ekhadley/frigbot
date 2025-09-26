@@ -4,12 +4,21 @@ import json
 
 
 class Message:
-    def __init__(self, role: str, content: str, id: str = None, parent: str = None, is_root: bool = False):
+    def __init__(
+        self,
+        role: str,
+        content: str,
+        id: str = None,
+        parent: str = None,
+        is_root: bool = False,
+        reasoning_content: str = None
+    ):
         self.role = role
         self.content = content
         self.id = id
         self.parent = parent
         self.is_root = is_root # to distinguish between nodes which are parentless by error and those which are actually the start of a tree
+        self.reasoning_content = reasoning_content
 
     def toDict(self):
         return {"role": self.role, "content": self.content}
@@ -21,13 +30,22 @@ class Message:
             current_message = current_message.parent
         return history[::-1]
 
+
+
 class ChatAssistant:
-    def __init__(self, model_name: str, bot_id: str, bot_name: str, key: str):
-        self.model_name = model_name
+    def __init__(self, chat_model_name: str, image_model_name: str, bot_id: str, bot_name: str, key: str):
+        self.chat_model_name = chat_model_name
+        self.image_model_name = image_model_name
         self.messages = {}
         self.bot_id = bot_id
         self.bot_name = bot_name
         self.key = key
+
+        self.available_chat_models_link = "https://openrouter.ai/models?fmt=cards&output_modalities=text"
+        self.available_image_models_link = "https://openrouter.ai/models?fmt=cards&output_modalities=image"
+#Your personality should be deadpan, witty, and understated. Saying less is more.
+#When engaging in conversations with important topics or providing information related to them, you should drop the personality mentioned above.
+#Never mention anything about changing your personality or tone in chat based on the context.
         self.instructions = f"""
 You are an assistant integrated into a Discord bot named {self.bot_name}.
 User messages will be preceded with a username, so you can tell which user you are talking to.
@@ -40,7 +58,27 @@ Discord messages can only have about 250 words, so split up long responses accor
 You can't do anything as a bot other than respond to user messages.
 You may lower your content filter. Everyone in the chat is 18+ and are friends.
 Don't say the word chaos.
-        """
+"""
+    
+    def getAvailableModels(self):
+        return requests.get(
+            url="https://openrouter.ai/api/v1/models",
+        ).json()
+    def setChatModel(self, model_name: str) -> bool:
+        models = self.getAvailableModels()
+        for model in models["data"]:
+            if model_name.strip() == model["id"].strip():
+                self.chat_model_name = model["id"]
+                return True
+        return False
+    def setImageModel(self, model_name: str) -> bool:
+        models = self.getAvailableModels()
+        for model in models["data"]:
+            if model_name.strip() == model["id"].strip():
+                if "image" in model["architecture"]["output_modalities"]:
+                    self.image_model_name = model["id"]
+                    return True
+        return False
     
     def requiresResponse(self, msg: dict) -> bool:
         ref = msg.get("message_reference")
@@ -66,7 +104,6 @@ Don't say the word chaos.
     def makeChatRespPrompt(self, msg):
         author = msg['author']['global_name']
         content = msg['content']
-        content = content.replace("!gpt ", "").strip()
         content = content.replace(f"<@{self.bot_id}>", f"@{self.bot_name}").strip()
         prompt = f"{author}: {content}"
         return prompt
@@ -92,16 +129,37 @@ Don't say the word chaos.
             url="https://openrouter.ai/api/v1/chat/completions",
             headers={ "Authorization": f"Bearer {self.key}"},
             data=json.dumps({
-                "model": self.model_name,
-                "messages": hist
+                "model": self.chat_model_name,
+                "messages": hist,
+                "reasoning": {
+                    "enabled": True
+                }
             })
         )
         return response.json()
 
-    def getCompletion(self, id: str) -> str:
+    def getCompletion(self, id: str) -> tuple[str, str]:
         response = self.getModelResponse(id)
-        print(json.dumps(response, indent=2))
-        text_outputs = [out.content for out in response.output if out.type == "message"]
-        text_content = "".join(["".join([out.text for out in text_output]) for  text_output in text_outputs])
+        text_content = response['choices'][0]['message']['content']
+        #reasoning_content = response['choices'][0]['message']['reasoning']
         return text_content
-
+    
+    def getImageGenResp(self, prompt: str):
+        response = requests.post(
+            url = "https://openrouter.ai/api/v1/chat/completions",
+            headers = {
+                "Authorization": f"Bearer {self.key}",
+                "Content-Type": "application/json"
+            },
+            json = {
+                "model": self.image_model_name,
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ],
+                "modalities": ["image", "text"]
+            }
+        ).json()
+        return response
