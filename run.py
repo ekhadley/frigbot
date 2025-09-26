@@ -16,5 +16,5 @@ if __name__ == '__main__':
     args = parser.parse_args()
     chat_id = eekay_dms_id if args.test else kissy_chat_id
     #frig = Frig(keys_path=keys_path, chat_id=chat_id)
-    frig = Frig.load_from_state_dict(state_dict_path)
+    frig = Frig.load_from_state_dict(state_dict_path, chat_id=chat_id)
     frig.runloop()

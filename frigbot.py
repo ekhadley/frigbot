@@ -42,7 +42,7 @@ class Frig:
         #self.asst = ChatAssistant("x-ai/grok-4", self.id, self.bot_name)
         #self.asst = ChatAssistant("google/gemini-2.5-pro", self.id, self.bot_name, self.keys['openrouter'])
 
-        self.lol = lolManager(self.keys["riot"], "summonerPUUIDs.json")
+        self.lol = lolManager(self.keys["riot"], "/home/ek/wgmn/frigbot/summonerPUUIDs.json")
 
         self.commands = {
             "!help":self.help_resp, # a dict of associations between commands (prefaced with a '!') and the functions they call to generate responses.
