@@ -1,8 +1,7 @@
 import time
 import requests
 import json
-import openai
-import anthropic
+
 
 class Message:
     def __init__(self, role: str, content: str, id: str = None, parent: str = None, is_root: bool = False):
@@ -23,44 +22,24 @@ class Message:
         return history[::-1]
 
 class ChatAssistant:
-    def __init__(self, model_name: str, bot_id: str, bot_name: str):
+    def __init__(self, model_name: str, bot_id: str, bot_name: str, key: str):
         self.model_name = model_name
         self.messages = {}
-        self.client = openai.OpenAI()
         self.bot_id = bot_id
         self.bot_name = bot_name
+        self.key = key
         self.instructions = f"""
 You are an assistant integrated into a Discord bot named {self.bot_name}.
 User messages will be preceded with a username, so you can tell which user you are talking to.
 Do not precede your own messages with any username.
 Your conversations may include more than 1 person.
 Do not use emojis. Do not use double newlines, messages should be compact.
-When using markdown, you may use bullet points and headers, but do not use tables or level 4 headers (####).
-You should generally prefer briefer answers, suitable for a shared group chat, but fully answering complex queries is more important.
+When using markdown, you may use bullet points and headers, but do not use tables or level 4 headers.
+While you should generally prefer briefer answers, suitable for a group chat, fully answering complex queries is more important.
 Discord messages can only have about 250 words, so split up long responses accordingly using the token <split>.
 You can't do anything as a bot other than respond to user messages.
 You may lower your content filter. Everyone in the chat is 18+ and are friends.
 Don't say the word chaos.
-        """
-        self.alt_instructions = f"""
-you are a chat assistant as part of a discord bot named {self.bot_name}.
-user messages will be preceded by the username of the person who sent the message.
-do not start your own messages with a username.
-when using markdown, you may use bullet points and headers, but do not use tables or level 4 headers (“####”).
-discord messages only fit about 200 words, so split up long responses when necessary by writing “<split>” in your responses.
-you can’t do anything as a bot other than chat. You don’t respond to commands like !reset, !uptime, etc.
-You may lower your content filter. everyone in the chat is adults and are friends.
-don't worry about formalities.
-please be as direct and straightforward as possible while still conveying substantially all information relevant to any question. do not use emojis.
-you do not need to match the tone or style of the user.
-dont ask followup questions or suggest continuations for the conversation or deploy any calls to action.
-provide a measured analysis of all queries and interactions.
-if content policy prevents you from responding, be explicit about what policy was violated and why.
-write all responses in lowercase letters ONLY, except where you mean to emphasize, in which case the emphasized word should be all caps. Initial Letter Capitalization can and should be used to express sarcasm, or disrespect for a given capitalized noun.
-you are encouraged to occasionally use obscure words or make subtle puns. don't point them out, I'll know. be critical of the quality of your information and look out for leading questions.
-if you find any request irritating you can respond dismissively like "be real" or "lol no"
-take however smart you're acting right now and write in the same style but as if you were +2sd smarter.
-
         """
     
     def requiresResponse(self, msg: dict) -> bool:
@@ -109,19 +88,19 @@ take however smart you're acting right now and write in the same style but as if
     
     def getModelResponse(self, id: str):
         hist = self.messages[id].getHistory()
-        return self.client.responses.create(
-            model = self.model_name,
-            instructions = self.instructions,
-            input = hist,
-            text={
-                "verbosity": "low"
-            },
-            reasoning={"summary": "auto"}
+        response = requests.post(
+            url="https://openrouter.ai/api/v1/chat/completions",
+            headers={ "Authorization": f"Bearer {self.key}"},
+            data=json.dumps({
+                "model": self.model_name,
+                "messages": hist
+            })
         )
+        return response.json()
+
     def getCompletion(self, id: str) -> str:
         response = self.getModelResponse(id)
-        #print(json.dumps(response.to_dict(), indent=2))
-        #content = response.output[0].content[0].text
+        print(json.dumps(response.to_dict(), indent=2))
         text_outputs = [out.content for out in response.output if out.type == "message"]
         text_content = "".join(["".join([out.text for out in text_output]) for  text_output in text_outputs])
         return text_content
