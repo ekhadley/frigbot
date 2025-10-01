@@ -24,6 +24,8 @@ class Frig:
         self.loop_delay = 2.0 # delay in seconds between checking for new mesages
         self.chat_id = chat_id
 
+        self.max_message_length = 2_000
+
         self.keys_path = keys_path
         with open(keys_path) as f:
             self.keys = json.load(f)
@@ -43,6 +45,7 @@ class Frig:
         #self.asst = ChatAssistant("anthropic/claude-opus-4.1", self.id, self.bot_name)
         #self.asst = ChatAssistant("x-ai/grok-4", self.id, self.bot_name)
         #self.asst = ChatAssistant("google/gemini-2.5-pro", self.id, self.bot_name, self.keys['openrouter'])
+        self.rps_scores = {}
 
         self.lol = lolManager(self.keys["riot"], "/home/ek/wgmn/frigbot/summonerPUUIDs.json")
 
@@ -165,6 +168,7 @@ class Frig:
         else:
             print(f"{bold}{gray}[FRIG]: {endc}{red}no match found for chat model '{model_name}' {endc}")
             return f"no model found for {model_name} [Available chat models](<{self.asst.available_chat_models_link}>)"
+
     def set_image_model(self, msg: str):
         msg_content = msg['content'] if isinstance(msg, dict) else msg
         model_name = msg_content.replace("!setimgmodel", "").strip()
@@ -184,10 +188,15 @@ class Frig:
         print(f"{bold}{gray}[FRIG]: {endc}{yellow}chat completion requested. . .{endc}")
         completion = self.asst.getCompletion(msg_id)
         split_completion = completion.replace("\n\n", "\n").strip().split("<split>")
+        for i, comp in enumerate(split_completion): # manually split any  completions that are too long,  if the model failed to do so manually
+            if len(comp) > self.max_message_length:
+                split_completion[i] = comp[:self.max_message_length]
+                split_completion.insert(i+1, comp[self.max_message_length:])
 
         resps = self.send(split_completion, reply_msg_id = msg_id)
         for comp, resp in zip(split_completion, resps):
             self.asst.addMessage("assistant", comp, resp["id"], msg_id)
+
     def img_resp(self, msg):
         prompt = msg['content'].replace("!img", "").strip()
         if self.current_image_model == "openai/gpt-image-1":

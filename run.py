@@ -2,7 +2,7 @@ import json
 import argparse
 from frigbot import Frig
 
-#keys_path = "/home/ek/frigkeys.json"
+keys_path = "/home/ek/frigkeys.json"
 #data_path = "/home/ek/wgmn/frigbot/config"
 state_dict_path = "/home/ek/wgmn/frigbot/state.json"
 

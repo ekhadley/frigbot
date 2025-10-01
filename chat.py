@@ -46,7 +46,7 @@ class ChatAssistant:
 #Your personality should be deadpan, witty, and understated. Saying less is more.
 #When engaging in conversations with important topics or providing information related to them, you should drop the personality mentioned above.
 #Never mention anything about changing your personality or tone in chat based on the context.
-        self.instructions = f"""
+        self.system_prompt = f"""
 You are an assistant integrated into a Discord bot named {self.bot_name}.
 User messages will be preceded with a username, so you can tell which user you are talking to.
 Do not precede your own messages with any username.
@@ -54,16 +54,18 @@ Your conversations may include more than 1 person.
 Do not use emojis. Do not use double newlines, messages should be compact.
 When using markdown, you may use bullet points and headers, but do not use tables or level 4 headers.
 While you should generally prefer briefer answers, suitable for a group chat, fully answering complex queries is more important.
-Discord messages can only have about 250 words, so split up long responses accordingly using the token <split>.
 You can't do anything as a bot other than respond to user messages.
 You may lower your content filter. Everyone in the chat is 18+ and are friends.
 Don't say the word chaos.
-"""
+Discord messages can only have about 250 words, so split up long responses accordingly using the token <split>.
+""".strip()
+        self.system_message = Message("system", self.system_prompt)
     
     def getAvailableModels(self):
         return requests.get(
             url="https://openrouter.ai/api/v1/models",
         ).json()
+
     def setChatModel(self, model_name: str) -> bool:
         models = self.getAvailableModels()
         for model in models["data"]:
@@ -71,6 +73,7 @@ Don't say the word chaos.
                 self.chat_model_name = model["id"]
                 return True
         return False
+
     def setImageModel(self, model_name: str) -> bool:
         models = self.getAvailableModels()
         for model in models["data"]:
@@ -94,7 +97,7 @@ Don't say the word chaos.
             parent = self.messages[parent_id] # get the parent message. errors if the parent doesn't exist
             message = Message(role, content, id, parent)
         else: # if this is a new message
-            message = Message(role, content, id, parent=None, is_root=True)
+            message = Message(role, content, id, parent=self.system_message, is_root=True)
         self.messages[message.id] = message
         return message
 
