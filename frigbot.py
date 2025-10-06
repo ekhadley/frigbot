@@ -54,6 +54,7 @@ class Frig:
             "!commands":self.help_resp,
             "!cmds":self.help_resp,
             "!got":self.got_resp,
+            "!model":self.get_current_models,
             "!setmodel":self.set_chat_model,
             "!setimgmodel":self.set_image_model,
             "!img":self.img_resp,
@@ -156,6 +157,9 @@ class Frig:
 
     def itysl_reference_resp(self, query="itysl", num=500):
         return self.randomgif(query, num)
+
+    def get_current_models(self, *args, **kwargs):
+        return f"chat model: {self.current_chat_model}, image model: {self.current_image_model}"
 
     def set_chat_model(self, msg: str):
         msg_content = msg['content'] if isinstance(msg, dict) else msg
