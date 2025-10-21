@@ -1,7 +1,7 @@
 import time
 import requests
 import json
-
+import re
 
 class Message:
     def __init__(
@@ -141,25 +141,25 @@ Discord messages can only have about 250 words, so split up long responses accor
     
     def getModelResponse(self, id: str):
         hist = self.messages[id].getHistory()
-        print(f"full model name: {self.chat_model_name + ':online'}")
         response = requests.post(
             url="https://openrouter.ai/api/v1/chat/completions",
             headers={ "Authorization": f"Bearer {self.key}"},
             data=json.dumps({
-                "model": self.chat_model_name + ":online",
-                #"plugins": self.plugins,
+                "model": self.chat_model_name,
+                "plugins": self.plugins,
                 "messages": hist,
                 "reasoning": {
                     "enabled": True
                 }
             })
         )
-        return response.json()
+        response_content = response.json()
+        return response_content
 
     def getCompletion(self, id: str) -> tuple[str, str]:
         response = self.getModelResponse(id)
         text_content = response['choices'][0]['message']['content']
-        #reasoning_content = response['choices'][0]['message']['reasoning']
+        text_content = re.sub(r'\[(.*?)\]\((.*?)\)', r'[\1](<\2>)', text_content) # replacing links of the format [.*](.*) with [.*](<.*>) using regex to avoid embedding
         return text_content
     
     def getImageGenResp(self, prompt: str):
