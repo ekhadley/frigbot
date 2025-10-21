@@ -33,13 +33,26 @@ class Message:
 
 
 class ChatAssistant:
-    def __init__(self, chat_model_name: str, image_model_name: str, bot_id: str, bot_name: str, key: str):
+    def __init__(
+        self,
+        chat_model_name: str,
+        image_model_name: str,
+        bot_id: str,
+        bot_name: str,
+        key: str,
+        system_prompt: str = None,
+        enable_web_search: bool = True,
+    ):
         self.chat_model_name = chat_model_name
         self.image_model_name = image_model_name
         self.messages = {}
         self.bot_id = bot_id
         self.bot_name = bot_name
         self.key = key
+
+        self.plugins = []
+        if enable_web_search:
+            self.plugins.append({"id": "web"})
 
         self.available_chat_models_link = "https://openrouter.ai/models?fmt=cards&output_modalities=text"
         self.available_image_models_link = "https://openrouter.ai/models?fmt=cards&output_modalities=image"
@@ -128,11 +141,13 @@ Discord messages can only have about 250 words, so split up long responses accor
     
     def getModelResponse(self, id: str):
         hist = self.messages[id].getHistory()
+        print(f"full model name: {self.chat_model_name + ':online'}")
         response = requests.post(
             url="https://openrouter.ai/api/v1/chat/completions",
             headers={ "Authorization": f"Bearer {self.key}"},
             data=json.dumps({
-                "model": self.chat_model_name,
+                "model": self.chat_model_name + ":online",
+                #"plugins": self.plugins,
                 "messages": hist,
                 "reasoning": {
                     "enabled": True
