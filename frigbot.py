@@ -41,7 +41,7 @@ class Frig:
         self.current_chat_model = "openai/gpt-5"
         self.current_image_model = "openai/gpt-image-1"
         self.asst = ChatAssistant(self.current_chat_model, self.current_image_model, self.id, self.bot_name, self.keys['openrouter'])
-        self.openai_client = OpenAI()
+        self.openai_client = OpenAI(api_key=self.keys.get('openai', ''))
         #self.asst = ChatAssistant("anthropic/claude-opus-4.1", self.id, self.bot_name)
         #self.asst = ChatAssistant("x-ai/grok-4", self.id, self.bot_name)
         #self.asst = ChatAssistant("google/gemini-2.5-pro", self.id, self.bot_name, self.keys['openrouter'])

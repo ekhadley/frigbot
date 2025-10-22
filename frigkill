@@ -1,11 +1,4 @@
 #!/bin/bash
 
-PIDS=$(pgrep -f "python.*run.py")
-if [ -z "$PIDS" ]; then
-	echo "frig was not running"
-	exit 1
-else
-	echo "Killing the following PID(s): $PIDS"
-	kill $PIDS
-	echo "frig killed."
-fi
+sudo systemctl stop --now frigbot.service
+systemctl status frigbot.service
