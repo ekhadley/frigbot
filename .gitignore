@@ -4,3 +4,4 @@ __pycache__/
 Zenon/
 Pipfile
 config/
+logs/
