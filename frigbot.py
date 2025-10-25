@@ -5,6 +5,7 @@ import time
 import json
 import requests
 import traceback
+import logging
 from openai import OpenAI
 
 from lolManager import lolManager
@@ -20,6 +21,7 @@ class Frig:
         chat_id: str,
         state_dict_path: str|None = None,
     ):
+        self.logger = logging.getLogger('frigbot')
         self.last_msg_id = 0 # unique message id. Used to check if a new message has been already seen
         self.loop_delay = 2.0 # delay in seconds between checking for new mesages
         self.chat_id = chat_id
@@ -99,7 +101,7 @@ class Frig:
         url = f"{self.url}/channels/{self.chat_id}/messages?limit={num_messages}"
         resp = requests.get(url, headers={"Authorization":self.token})
         if not resp.ok:
-            print(f"{bold}{gray}[FRIG]: {endc}{red} message grab not successful: {resp}{endc}")
+            self.logger.error(f"Message grab not successful: {resp}")
             return None
         data = resp.json()
         return data[0] if len(data) == 1 else data
@@ -117,37 +119,37 @@ class Frig:
         body = msg["content"].lstrip()
         if body.startswith("!"):
             command_name = body.split(" ")[0].strip()
-            print(f"{bold}{gray}[FRIG]: {endc}{yellow} command found: {command_name}{endc}")
+            self.logger.info(f"Command found: {command_name}")
             if command_name in self.commands.keys():
                 try:
                     return self.commands[command_name](msg)
                 except Exception as e:
-                    print(f"{bold}{gray}[FRIG]: {endc}{red} known command '{command_name}' failed")
-                    traceback.print_exc()
-                    print(endc)
+                    self.logger.error(f"Known command '{command_name}' failed", exc_info=True)
                     return f"command '{command_name}' failed with exception:\n```ansi\n{e}\n```"
             else:
-                print(f"{bold}{gray}[FRIG]: {endc}{red} unknown command '{command_name}' was called:\n{endc}")
+                self.logger.warning(f"Unknown command '{command_name}' was called")
                 return f"command '{command_name}' not recognized"
         elif self.asst.requiresResponse(msg) or self.botTaggedInMessage(msg):
-            print(f"{bold}{gray}[FRIG]: {endc}{yellow} chat completion requested via reply{endc}")
+            self.logger.info("Chat completion requested via reply")
             return self.chat_resp(msg)
         elif random.random() > 0.9 and contains_scrambled(msg['content'], "itysl"):
             return self.itysl_reference_resp()
         return None
 
     def runloop(self):
-        print(bold, cyan, "\nFrigBot started!", endc)
+        self.logger.info("FrigBot started!")
         while 1:
             try:
                 is_new, msg = self.getNewMessage()
                 if is_new:
+                    msg_author = msg.get("author", {}).get("global_name", "unknown")
+                    msg_preview = msg.get("content", "")[:50]
+                    self.logger.info(f"New message from {msg_author}: {msg_preview}")
                     resp = self.getResponseToNewMessage(msg)
                     self.send(resp)
                 self.wait()
             except Exception as e:
-                print(f"{red}, {bold}, [FRIG] crashed with exception:\n{e}")
-                traceback.print_exc()
+                self.logger.exception("FrigBot crashed with exception in main loop")
                 time.sleep(3)
 
     def poem_resp(self, *args, **kwargs):
@@ -166,11 +168,11 @@ class Frig:
         model_name = msg_content.replace("!setmodel", "").strip()
         if self.asst.setChatModel(model_name):
             self.current_chat_model = model_name
-            print(f"{bold}{gray}[FRIG]: {endc}{yellow}chat model set to '{model_name}'{endc}")
+            self.logger.info(f"Chat model set to '{model_name}'")
             self.save_state()
             return f"chat model set to {model_name}"
         else:
-            print(f"{bold}{gray}[FRIG]: {endc}{red}no match found for chat model '{model_name}' {endc}")
+            self.logger.warning(f"No match found for chat model '{model_name}'")
             return f"no model found for {model_name} [Available chat models](<{self.asst.available_chat_models_link}>)"
 
     def set_image_model(self, msg: str):
@@ -178,18 +180,18 @@ class Frig:
         model_name = msg_content.replace("!setimgmodel", "").strip()
         if model_name == "openai/gpt-image-1" or self.asst.setImageModel(model_name):
             self.current_image_model = model_name
-            print(f"{bold}{gray}[FRIG]: {endc}{yellow}image model set to '{model_name}'{endc}")
+            self.logger.info(f"Image model set to '{model_name}'")
             self.save_state()
             return f"image model set to {model_name}"
         else:
-            print(f"{bold}{gray}[FRIG]: {endc}{red}no match found for image model '{model_name}' {endc}")
+            self.logger.warning(f"No match found for image model '{model_name}'")
             return f"no image-capable model found for {model_name} [Available image models](<{self.asst.available_image_models_link}>)"
 
     def chat_resp(self, msg):
         msg_id = msg.get("id")
         self.asst.addMessageFromChat(msg)
 
-        print(f"{bold}{gray}[FRIG]: {endc}{yellow}chat completion requested. . .{endc}")
+        self.logger.info(f"Chat completion requested for message {msg_id}")
         completion = self.asst.getCompletion(msg_id)
         split_completion = completion.replace("\n\n", "\n").strip().split("<split>")
         for i, comp in enumerate(split_completion): # manually split any  completions that are too long,  if the model failed to do so manually
@@ -219,6 +221,7 @@ class Frig:
 
     def gpt_img_resp(self, msg):
         prompt = msg['content'].replace("!img", "").strip()
+        self.logger.info(f"Image generation started: '{prompt[:50]}...'")
         self.send(f"image gen started: '{prompt if len(prompt) < 15 else prompt[:15]+'...'}'")
         try:
             resp = self.openai_client.images.generate(
@@ -227,15 +230,16 @@ class Frig:
                     moderation="low",
                     quality="high",
                 )
-            print(resp)
+            self.logger.debug(f"OpenAI image response: {resp}")
         except Exception as e:
+            self.logger.error(f"Image generation failed: {e}", exc_info=True)
             if e.code == "moderation_blocked":
                 return "no porn!!!"
             return f"error while generating: '{e.code}'"
 
         img_b64 = resp.data[0].b64_json
         img_bytes = base64.b64decode(img_b64)
-        print(f"{bold}{gray}[FRIG]: {endc}{yellow}image generated successfully{endc}")
+        self.logger.info("Image generated successfully")
         self.send("", files={"file": ("output.png", img_bytes)})
 
     def help_resp(self, msg):
@@ -268,7 +272,7 @@ class Frig:
         win_key, draw_key, loss_key = f"{authorid}_w", f"{authorid}_d", f"{authorid}_l"
 
         if win_key not in self.rps_scores:
-            print(f"{bold}{gray}[RPS]: {endc}{yellow}new RPS player found {endc}")
+            self.logger.info(f"New RPS player: {authorid}")
             self.rps_scores[draw_key] = 0
             self.rps_scores[win_key] = 0
             self.rps_scores[loss_key] = 0
@@ -290,7 +294,7 @@ class Frig:
         if (roll+1)%3 == botroll:
             report = f"I chose {opts[botroll]}. shitter"
             self.rps_scores[loss_key] += 1
-        print(f"bot rolled: {botroll} ({opts[botroll]}), user rolled {roll} ({opts[roll]})")
+        self.logger.debug(f"RPS: bot rolled {botroll} ({opts[botroll]}), user rolled {roll} ({opts[roll]})")
         
         self.save_state()
         
@@ -322,7 +326,7 @@ class Frig:
             return rep
         
         except ValueError:
-            print(info)
+            self.logger.error(f"Failed to parse ranked info: {info}")
             return f"got ranked info:\n'{info}',\n but failed to parse. (spam @eekay)"
 
     def group_lp_resp(self, *args, **kwargs):
@@ -388,6 +392,7 @@ class Frig:
             "save_time": datetime.datetime.now().isoformat(),
         }
     def save_state(self):
+        self.logger.debug("Saving state to state.json")
         with open("state.json", "w") as f:
             f.write(json.dumps(self.state_dict(), indent=2))
     
@@ -407,6 +412,6 @@ class Frig:
         frig.rps_scores = saved_state["rps_scores"]
         frig.set_chat_model(saved_state["current_chat_model"])
         frig.set_image_model(saved_state["current_image_model"])
-        print(f"{bold}{gray}[FRIG]: {endc}{yellow}loaded state dict from '{path}'{endc}")
+        frig.logger.info(f"Loaded state dict from '{path}'")
         frig.save_state()
         return frig

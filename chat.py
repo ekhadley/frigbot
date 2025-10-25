@@ -2,6 +2,7 @@ import time
 import requests
 import json
 import re
+import logging
 
 class Message:
     def __init__(
@@ -43,6 +44,7 @@ class ChatAssistant:
         system_prompt: str = None,
         enable_web_search: bool = True,
     ):
+        self.logger = logging.getLogger('chat')
         self.chat_model_name = chat_model_name
         self.image_model_name = image_model_name
         self.messages = {}
@@ -80,20 +82,26 @@ Discord messages can only have about 250 words, so split up long responses accor
         ).json()
 
     def setChatModel(self, model_name: str) -> bool:
+        self.logger.debug(f"Setting chat model to: {model_name}")
         models = self.getAvailableModels()
         for model in models["data"]:
             if model_name.strip() == model["id"].strip():
                 self.chat_model_name = model["id"]
+                self.logger.info(f"Chat model successfully set to: {model_name}")
                 return True
+        self.logger.warning(f"Chat model not found: {model_name}")
         return False
 
     def setImageModel(self, model_name: str) -> bool:
+        self.logger.debug(f"Setting image model to: {model_name}")
         models = self.getAvailableModels()
         for model in models["data"]:
             if model_name.strip() == model["id"].strip():
                 if "image" in model["architecture"]["output_modalities"]:
                     self.image_model_name = model["id"]
+                    self.logger.info(f"Image model successfully set to: {model_name}")
                     return True
+        self.logger.warning(f"Image model not found or not image-capable: {model_name}")
         return False
     
     def requiresResponse(self, msg: dict) -> bool:
@@ -112,6 +120,7 @@ Discord messages can only have about 250 words, so split up long responses accor
         else: # if this is a new message
             message = Message(role, content, id, parent=self.system_message, is_root=True)
         self.messages[message.id] = message
+        self.logger.debug(f"Added message node: id={id}, role={role}, parent={parent_id}")
         return message
 
     def getRoleFromUsername(self, username: str) -> str:
@@ -141,6 +150,7 @@ Discord messages can only have about 250 words, so split up long responses accor
     
     def getModelResponse(self, id: str):
         hist = self.messages[id].getHistory()
+        self.logger.info(f"OpenRouter request: model={self.chat_model_name}, messages={len(hist)}")
         response = requests.post(
             url="https://openrouter.ai/api/v1/chat/completions",
             headers={ "Authorization": f"Bearer {self.key}"},
@@ -153,6 +163,9 @@ Discord messages can only have about 250 words, so split up long responses accor
                 }
             })
         )
+        self.logger.debug(f"OpenRouter response status: {response.status_code}")
+        if not response.ok:
+            self.logger.error(f"OpenRouter API call failed: {response.status_code} - {response.text}")
         response_content = response.json()
         return response_content
 
@@ -160,9 +173,16 @@ Discord messages can only have about 250 words, so split up long responses accor
         response = self.getModelResponse(id)
         text_content = response['choices'][0]['message']['content']
         text_content = re.sub(r'\[(.*?)\]\((.*?)\)', r'[\1](<\2>)', text_content) # replacing links of the format [.*](.*) with [.*](<.*>) using regex to avoid embedding
+        
+        # Log usage stats if available
+        if 'usage' in response:
+            usage = response['usage']
+            self.logger.info(f"Completion usage: prompt_tokens={usage.get('prompt_tokens')}, completion_tokens={usage.get('completion_tokens')}, total_tokens={usage.get('total_tokens')}")
+        
         return text_content
     
     def getImageGenResp(self, prompt: str):
+        self.logger.info(f"Image generation request: model={self.image_model_name}, prompt='{prompt[:50]}...'")
         response = requests.post(
             url = "https://openrouter.ai/api/v1/chat/completions",
             headers = {
@@ -179,5 +199,9 @@ Discord messages can only have about 250 words, so split up long responses accor
                 ],
                 "modalities": ["image", "text"]
             }
-        ).json()
-        return response
+        )
+        if not response.ok:
+            self.logger.error(f"Image generation API call failed: {response.status_code} - {response.text}")
+        else:
+            self.logger.debug(f"Image generation response status: {response.status_code}")
+        return response.json()

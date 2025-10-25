@@ -1,6 +1,7 @@
 import json
 import argparse
 from frigbot import Frig
+from logger_config import setup_logging
 
 keys_path = "/home/ek/frigkeys.json"
 #data_path = "/home/ek/wgmn/frigbot/config"
@@ -14,7 +15,14 @@ parser.add_argument("-t", "--test", action="store_true", help="Use test chat ID 
 
 if __name__ == '__main__':
     args = parser.parse_args()
+    
+    # Setup logging
+    logger = setup_logging()
+    logger.info(f"Starting FrigBot (test_mode={args.test})")
+    
     chat_id = eekay_dms_id if args.test else kissy_chat_id
     #frig = Frig(keys_path=keys_path, chat_id=chat_id)
     frig = Frig.load_from_state_dict(state_dict_path, chat_id=chat_id)
+    
+    logger.info("Entering main message loop")
     frig.runloop()
