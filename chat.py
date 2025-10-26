@@ -41,10 +41,12 @@ class ChatAssistant:
         bot_id: str,
         bot_name: str,
         key: str,
+        log_func: callable = None,
         system_prompt: str = None,
         enable_web_search: bool = True,
     ):
         self.logger = logging.getLogger('chat')
+        self.log = log_func
         self.chat_model_name = chat_model_name
         self.image_model_name = image_model_name
         self.messages = {}
@@ -82,26 +84,24 @@ Discord messages can only have about 250 words, so split up long responses accor
         ).json()
 
     def setChatModel(self, model_name: str) -> bool:
-        self.logger.debug(f"Setting chat model to: {model_name}")
         models = self.getAvailableModels()
         for model in models["data"]:
             if model_name.strip() == model["id"].strip():
                 self.chat_model_name = model["id"]
-                self.logger.info(f"Chat model successfully set to: {model_name}")
+                self.log('info', 'model_changed', "Chat model changed", {'model': model_name, 'model_type': 'chat'})
                 return True
-        self.logger.warning(f"Chat model not found: {model_name}")
+        self.log('warning', 'model_error', "Chat model not found", {'model': model_name, 'model_type': 'chat'})
         return False
 
     def setImageModel(self, model_name: str) -> bool:
-        self.logger.debug(f"Setting image model to: {model_name}")
         models = self.getAvailableModels()
         for model in models["data"]:
             if model_name.strip() == model["id"].strip():
                 if "image" in model["architecture"]["output_modalities"]:
                     self.image_model_name = model["id"]
-                    self.logger.info(f"Image model successfully set to: {model_name}")
+                    self.log('info', 'model_changed', "Image model changed", {'model': model_name, 'model_type': 'image'})
                     return True
-        self.logger.warning(f"Image model not found or not image-capable: {model_name}")
+        self.log('warning', 'model_error', "Image model not found", {'model': model_name, 'model_type': 'image'})
         return False
     
     def requiresResponse(self, msg: dict) -> bool:
@@ -120,7 +120,7 @@ Discord messages can only have about 250 words, so split up long responses accor
         else: # if this is a new message
             message = Message(role, content, id, parent=self.system_message, is_root=True)
         self.messages[message.id] = message
-        self.logger.debug(f"Added message node: id={id}, role={role}, parent={parent_id}")
+        self.log('debug', 'chat_message_added', "Message added", {'message_id': id, 'role': role, 'parent_id': parent_id})
         return message
 
     def getRoleFromUsername(self, username: str) -> str:
@@ -150,7 +150,7 @@ Discord messages can only have about 250 words, so split up long responses accor
     
     def getModelResponse(self, id: str):
         hist = self.messages[id].getHistory()
-        self.logger.info(f"OpenRouter request: model={self.chat_model_name}, messages={len(hist)}")
+        self.log('info', 'chat_api_request', "OpenRouter chat request", {'model': self.chat_model_name, 'message_count': len(hist)})
         response = requests.post(
             url="https://openrouter.ai/api/v1/chat/completions",
             headers={ "Authorization": f"Bearer {self.key}"},
@@ -163,10 +163,10 @@ Discord messages can only have about 250 words, so split up long responses accor
                 }
             })
         )
-        self.logger.debug(f"OpenRouter response status: {response.status_code}")
         if not response.ok:
-            self.logger.error(f"OpenRouter API call failed: {response.status_code} - {response.text}")
+            self.log('error', 'chat_api_error', "OpenRouter API call failed", {'status_code': response.status_code, 'response': response.text})
         response_content = response.json()
+        self.log('info', 'chat_api_response', "OpenRouter chat response", {'response': response_content})
         return response_content
 
     def getCompletion(self, id: str) -> tuple[str, str]:
@@ -177,12 +177,12 @@ Discord messages can only have about 250 words, so split up long responses accor
         # Log usage stats if available
         if 'usage' in response:
             usage = response['usage']
-            self.logger.info(f"Completion usage: prompt_tokens={usage.get('prompt_tokens')}, completion_tokens={usage.get('completion_tokens')}, total_tokens={usage.get('total_tokens')}")
+            self.log('info', 'chat_usage', "Completion usage", {'prompt_tokens': usage.get('prompt_tokens'), 'completion_tokens': usage.get('completion_tokens'), 'total_tokens': usage.get('total_tokens')})
         
         return text_content
     
     def getImageGenResp(self, prompt: str):
-        self.logger.info(f"Image generation request: model={self.image_model_name}, prompt='{prompt[:50]}...'")
+        self.log('info', 'image_api_request', "Image generation request", {'model': self.image_model_name, 'prompt': prompt[:100]})
         response = requests.post(
             url = "https://openrouter.ai/api/v1/chat/completions",
             headers = {
@@ -201,7 +201,7 @@ Discord messages can only have about 250 words, so split up long responses accor
             }
         )
         if not response.ok:
-            self.logger.error(f"Image generation API call failed: {response.status_code} - {response.text}")
-        else:
-            self.logger.debug(f"Image generation response status: {response.status_code}")
-        return response.json()
+            self.log('error', 'image_api_error', "Image generation API call failed", {'status_code': response.status_code, 'response': response.text})
+        response_content = response.json()
+        self.log('info', 'image_api_response', "Image generation response", {'response': response_content})
+        return response_content

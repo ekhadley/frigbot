@@ -18,11 +18,12 @@ if __name__ == '__main__':
     
     # Setup logging
     logger = setup_logging()
-    logger.info(f"Starting FrigBot (test_mode={args.test})")
     
     chat_id = eekay_dms_id if args.test else kissy_chat_id
+    logger.info(f"Starting FrigBot (test_mode={args.test})", extra={'data': {'test_mode': args.test, 'chat_id': chat_id, 'event_type': 'bot_starting'}})
+    
     #frig = Frig(keys_path=keys_path, chat_id=chat_id)
     frig = Frig.load_from_state_dict(state_dict_path, chat_id=chat_id)
     
-    logger.info("Entering main message loop")
+    logger.info("Entering main message loop", extra={'data': {'chat_id': chat_id, 'event_type': 'entering_main_loop'}})
     frig.runloop()

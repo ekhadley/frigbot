@@ -4,32 +4,33 @@ import logging
 from utils import gray, bold, endc, yellow, blue, green, red
 
 class lolManager: # this handles requests to the riot api
-    def __init__(self, riot_key: str, puuids_path: str):
+    def __init__(self, riot_key: str, puuids_path: str, log_func):
         self.logger = logging.getLogger('lol')
+        self.log = log_func
         self.riot_key = riot_key
         self.puuids_path = puuids_path
         with open(puuids_path) as f:
             self.summoner_puuids = json.load(f)
-        self.logger.info(f"Loaded {len(self.summoner_puuids)} summoner PUUIDs")
+        self.log('info', 'lol_init', "Summoner PUUIDs loaded", {'count': len(self.summoner_puuids)})
 
     def get_ranked_info(self, sum_name, region=None):
         region = "na1" if region is None else region
-        self.logger.info(f"Fetching ranked info for '{sum_name}' in {region}")
+        self.log('info', 'lol_lookup', "Fetching ranked info", {'summoner': sum_name, 'region': region})
         puuid = self.summoner_puuids[sum_name]
         url = f"https://{region}.api.riotgames.com/lol/league/v4/entries/by-puuid/{puuid}?api_key={self.riot_key}"
         get = requests.get(url)
         if get.status_code == 200:
-            self.logger.info(f"Ranked info acquired for '{sum_name}'")
+            self.log('info', 'lol_success', "Ranked info acquired", {'summoner': sum_name})
             raw_info = get.json(parse_float=float, parse_int=int)
             full_info = {}
             for specific_queue_info in raw_info:
                 full_info[specific_queue_info["queueType"]] = specific_queue_info
             return full_info
         elif get.status_code == 403:
-            self.logger.error(f"Got 403 for '{sum_name}' - API key probably expired")
+            self.log('error', 'lol_api_error', "Riot API returned 403", {'summoner': sum_name, 'status_code': 403, 'url': url})
             return f"got 403 for name '{sum_name}'. key is probably expired. blame riot request url:\n{url}"
         else:
-            self.logger.error(f"Riot API error for '{sum_name}': status={get.status_code}, url={url}")
+            self.log('error', 'lol_api_error', "Riot API error", {'summoner': sum_name, 'status_code': get.status_code, 'url': url})
             return "https://tenor.com/view/snoop-dog-who-what-gif-14541222"
 
     #ugh:
@@ -38,7 +39,7 @@ class lolManager: # this handles requests to the riot api
     # https://developer.riotgames.com/apis#match-v5/GET_getMatch to get info about the game from the id from the match id
     def match_history(self, summonerName, region=None):
         region = "americas" if region is None else region
-        self.logger.info(f"Fetching match history for '{summonerName}' in {region}")
+        self.log('info', 'lol_match_history', "Fetching match history", {'summoner': summonerName, 'region': region})
         #summonerID = self.get_summoner_id(summonerName, region)
         url = f"https://{region}.api.riotgames.com/lol/match/v5/matches/NA1_5004846015?api_key={self.riot_key}"
         get = requests.get(url)
@@ -47,16 +48,14 @@ class lolManager: # this handles requests to the riot api
             json.dump(get.json(), f, ensure_ascii=False, indent=4)
         
         if get.status_code == 200:
-            self.logger.info(f"Match history acquired for '{summonerName}'")
-            self.logger.debug(f"Match data: {get.json()}")
+            self.log('info', 'lol_success', "Match history acquired", {'summoner': summonerName})
         elif get.status_code == 403:
-            self.logger.error(f"Got 403 for '{summonerName}' - API key probably expired")
+            self.log('error', 'lol_api_error', "Riot API returned 403", {'summoner': summonerName, 'status_code': 403})
             return f"got 403 for name '{summonerName}'. key is probably expired. blame riot"
         else:
-            self.logger.error(f"Riot API error for '{summonerName}': status={get.status_code}, url={url}")
+            self.log('error', 'lol_api_error', "Riot API error", {'summoner': summonerName, 'status_code': get.status_code, 'url': url})
             return "https://tenor.com/view/snoop-dog-who-what-gif-14541222"
 
-
     def list_known_summoners(self, *args, **kwargs):
-        self.logger.debug(f"Listing {len(self.summoner_puuids)} known summoners")
+        self.log('debug', 'lol_list_summoners', "Listing known summoners", {'count': len(self.summoner_puuids)})
         return "".join([f"{k}\n" for k, v in self.summoner_puuids.items()])
