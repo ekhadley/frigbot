@@ -25,8 +25,19 @@ class SizedRotatingFileHandler(logging.FileHandler):
         self.log_dir = Path(log_dir)
         self.log_dir.mkdir(exist_ok=True)
         self.index = 0
-        self.current_file = self._get_new_filename()
-        super().__init__(self.current_file, encoding='utf-8')
+        
+        # Find the most recent log file and continue using it if under size limit
+        existing_logs = sorted(self.log_dir.glob('frigbot_*.jsonl'))
+        if existing_logs:
+            latest_log = existing_logs[-1]
+            if os.path.getsize(latest_log) < MAX_LOG_FILE_SIZE:
+                self.current_file = latest_log
+            else:
+                self.current_file = self._get_new_filename()
+        else:
+            self.current_file = self._get_new_filename()
+        
+        super().__init__(self.current_file, mode='a', encoding='utf-8')
     
     def _get_new_filename(self):
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
