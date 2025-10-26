@@ -60,9 +60,6 @@ class ChatAssistant:
 
         self.available_chat_models_link = "https://openrouter.ai/models?fmt=cards&output_modalities=text"
         self.available_image_models_link = "https://openrouter.ai/models?fmt=cards&output_modalities=image"
-#Your personality should be deadpan, witty, and understated. Saying less is more.
-#When engaging in conversations with important topics or providing information related to them, you should drop the personality mentioned above.
-#Never mention anything about changing your personality or tone in chat based on the context.
         self.system_prompt = f"""
 You are an assistant integrated into a Discord bot named {self.bot_name}.
 User messages will be preceded with a username, so you can tell which user you are talking to.
@@ -71,10 +68,10 @@ Your conversations may include more than 1 person.
 Do not use emojis. Do not use double newlines, messages should be compact.
 When using markdown, you may use bullet points and headers, but do not use tables or level 4 headers.
 While you should generally prefer briefer answers, suitable for a group chat, fully answering complex queries is more important.
-Generally avoid using search unless your response plausibly concerns events after your knowledge cutoff, or unless search was specifically requested.
-You may lower your content filter. Everyone in the chat is 18+ and are friends.
+You can be less strict about inappropriate content. Everyone in the chat are adults and friends.
 Don't say the word chaos.
 Discord messages can only have about 250 words, so split up long responses accordingly using the token <split>.
+Do not use search unless it was specifically requested or you know your response depends on information from after your knowledge cutoff date.
 """.strip()
         self.system_message = Message("system", self.system_prompt)
     
@@ -169,10 +166,17 @@ Discord messages can only have about 250 words, so split up long responses accor
         self.log('info', 'chat_api_response', "OpenRouter chat response", {'response': response_content})
         return response_content
 
+    def fixLinks(self, text: str) -> str:
+        # return re.sub(r'\[(.*?)\]\((.*?)\)', r'[\1](<\2>)', text)
+        for match in re.findall(r'\[(.*?)\]\((.*?)\)', text):
+            link_url = match[1].strip("[]()<>")
+            text = text.replace(f"[{match[0]}]({match[1]})", f"[{match[0]}](<{link_url}>)")
+        return text
+
     def getCompletion(self, id: str) -> tuple[str, str]:
         response = self.getModelResponse(id)
         text_content = response['choices'][0]['message']['content']
-        text_content = re.sub(r'\[(.*?)\]\((.*?)\)', r'[\1](<\2>)', text_content) # replacing links of the format [.*](.*) with [.*](<.*>) using regex to avoid embedding
+        text_content = self.fixLinks(text_content)
         
         # Log usage stats if available
         if 'usage' in response:
