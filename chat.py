@@ -31,8 +31,6 @@ class Message:
             current_message = current_message.parent
         return history[::-1]
 
-
-
 class ChatAssistant:
     def __init__(
         self,
@@ -56,7 +54,7 @@ class ChatAssistant:
 
         self.plugins = []
         if enable_web_search:
-            self.plugins.append({"id": "web"})
+            self.plugins.append({"id": "web", "engine": "native"})
 
         self.available_chat_models_link = "https://openrouter.ai/models?fmt=cards&output_modalities=text"
         self.available_image_models_link = "https://openrouter.ai/models?fmt=cards&output_modalities=image"
