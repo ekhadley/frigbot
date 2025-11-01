@@ -1,9 +1,9 @@
 {
   "keys_path": "/home/ek/frigkeys.json",
-  "chat_id": 551246526924455937,
+  "chat_id": 972938534661009519,
   "current_chat_model": "anthropic/claude-sonnet-4.5",
   "current_image_model": "openai/gpt-image-1",
   "rps_scores": {},
-  "start_time": "2025-10-30T21:19:29.027595",
-  "save_time": "2025-10-30T21:19:29.335507"
+  "start_time": "2025-11-01T14:36:15.347369",
+  "save_time": "2025-11-01T14:36:15.624810"
 }
