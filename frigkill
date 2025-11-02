@@ -1,4 +1,0 @@
-#!/bin/bash
-
-sudo systemctl stop --now frigbot.service
-systemctl status frigbot.service

@@ -1,21 +1,36 @@
 #!/bin/bash
 
-quiet=0
 project="/home/ek/wgmn/frigbot"
+service_name="frigbot.service"
 
-test_flag=""
-for arg in "$@"; do
-  if [[ "$arg" == -* ]]; then
-     [[ "$arg" == *"q"* ]] && quiet=1
-     [[ "$arg" == *"t"* ]] && test_flag="-t"
-  fi
-done
-
-if [[ $quiet -eq 1 ]]; then
-    #nohup $pypath $project/$name $test_flag > ~/frigout.log 2> ~/frigerr.log 2>&1 &
-    sudo systemctl start --now frigbot.service
-    echo "Starting frigbot daemon"
-else
-    #$pypath $project/$name $test_flag
-    "$project/.venv/bin/python" "$project/run.py" $test_flag
-fi
+# Handle subcommands
+case "$1" in
+    test)
+        # Run in test DM channel with console printing
+        "$project/.venv/bin/python" "$project/run.py" -t
+        ;;
+    kill)
+        # Kill the systemd service
+        sudo systemctl stop "$service_name"
+        systemctl status "$service_name"
+        ;;
+    "")
+        # Default: check if service is running, start if not, show status if running
+        if systemctl is-active --quiet "$service_name"; then
+            echo "Service is running. Status:"
+            systemctl status "$service_name" --no-pager
+        else
+            echo "Service is not running. Starting..."
+            sudo systemctl start "$service_name"
+            sleep 1
+            systemctl status "$service_name" --no-pager
+        fi
+        ;;
+    *)
+        echo "Usage: $0 [test|kill]"
+        echo "  test - Run in test DM channel with console output"
+        echo "  kill - Stop the systemd service"
+        echo "  (no args) - Start service if not running, show status if running"
+        exit 1
+        ;;
+esac
