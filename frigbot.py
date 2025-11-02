@@ -51,7 +51,7 @@ class Frig:
         )
         self.openai_client = OpenAI(api_key=self.keys['openai'])
         self.rps_scores = {}
-        self.lol = lolManager(self.keys["riot"], "/home/ek/wgmn/frigbot/summonerPUUIDs.json", self.log)
+        self.lol = lolManager(self.keys["riot"], "/home/ek/wgmn/frigbot/data/summonerPUUIDs.json", self.log)
         self.commands = {
             "!help":self.help_resp, # a dict of associations between commands (prefaced with a '!') and the functions they call to generate responses.
             "!commands":self.help_resp,
