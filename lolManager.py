@@ -33,7 +33,7 @@ class lolManager: # this handles requests to the riot api
             self.log('error', 'lol_api_error', "Riot API error", {'summoner': sum_name, 'status_code': get.status_code, 'url': url})
             return "https://tenor.com/view/snoop-dog-who-what-gif-14541222"
 
-    #ugh:
+    # ugh:
     # https://developer.riotgames.com/apis#summoner-v4/GET_getBySummonerId to get the puuid from the encrypted summoner id (which is whats stored by frig)
     # https://developer.riotgames.com/apis#match-v5/GET_getMatchIdsByPUUID to get the match ids of whatever games from the summoner's puuid
     # https://developer.riotgames.com/apis#match-v5/GET_getMatch to get info about the game from the id from the match id

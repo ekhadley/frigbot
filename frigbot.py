@@ -35,7 +35,6 @@ class Frig:
         self.start_time = datetime.datetime.now()
         self.state_dict_path = state_dict_path
 
-        self.bot_name = "FriggBot2000"
         self.id = "352226045228875786"
         self.url = "https://discordapp.com/api/v9"
         self.token = self.keys['discord']
@@ -45,20 +44,14 @@ class Frig:
         self.asst = ChatAssistant(
             chat_model_name = self.current_chat_model,
             image_model_name = self.current_image_model,
-            bot_name = self.bot_name,
             bot_id = self.id,
             key = self.keys['openrouter'],
             log_func = self.log,
             enable_web_search = False
         )
         self.openai_client = OpenAI(api_key=self.keys['openai'])
-        #self.asst = ChatAssistant("anthropic/claude-opus-4.1", self.id, self.bot_name)
-        #self.asst = ChatAssistant("x-ai/grok-4", self.id, self.bot_name)
-        #self.asst = ChatAssistant("google/gemini-2.5-pro", self.id, self.bot_name, self.keys['openrouter'])
         self.rps_scores = {}
-
         self.lol = lolManager(self.keys["riot"], "/home/ek/wgmn/frigbot/summonerPUUIDs.json", self.log)
-
         self.commands = {
             "!help":self.help_resp, # a dict of associations between commands (prefaced with a '!') and the functions they call to generate responses.
             "!commands":self.help_resp,

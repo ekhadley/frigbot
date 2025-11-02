@@ -37,7 +37,6 @@ class ChatAssistant:
         chat_model_name: str,
         image_model_name: str,
         bot_id: str,
-        bot_name: str,
         key: str,
         log_func: callable = None,
         system_prompt: str = None,
@@ -48,9 +47,8 @@ class ChatAssistant:
         self.chat_model_name = chat_model_name
         self.image_model_name = image_model_name
         self.messages = {}
-        self.bot_id = bot_id
-        self.bot_name = bot_name
         self.key = key
+        self.bot_id = str(bot_id)
 
         self.plugins = []
         if enable_web_search:
@@ -59,7 +57,7 @@ class ChatAssistant:
         self.available_chat_models_link = "https://openrouter.ai/models?fmt=cards&output_modalities=text"
         self.available_image_models_link = "https://openrouter.ai/models?fmt=cards&output_modalities=image"
         self.system_prompt = f"""
-You are an assistant integrated into a Discord bot named {self.bot_name}.
+You are an assistant integrated into a Discord bot named FriggBot2000.
 User messages will be preceded with a username, so you can tell which user you are talking to.
 Do not precede your own messages with any username.
 Your conversations may include more than 1 person.
@@ -118,14 +116,14 @@ Do not use search unless it was specifically requested or you know your response
         self.log('debug', 'chat_message_added', "Message added", {'message_id': id, 'role': role, 'parent_id': parent_id})
         return message
 
-    def getRoleFromUsername(self, username: str) -> str:
-        return "assistant" if username == self.bot_name else "user"
-
     def makeChatRespPrompt(self, msg):
         author = msg['author']['global_name']
         content = msg['content']
-        content = content.replace(f"<@{self.bot_id}>", f"@{self.bot_name}").strip()
+        print(json.dumps(msg, indent=2))
+        for mention in msg['mentions']:
+            content = content.replace(f"<@{mention['id']}>", f"@{mention['global_name']}").strip()
         prompt = f"{author}: {content}"
+        print(prompt)
         return prompt
 
     def addMessageFromChat(self, msg: dict) -> Message:
@@ -137,8 +135,8 @@ Do not use search unless it was specifically requested or you know your response
             replied_msg_id = replied_msg.get('id')
             if not replied_msg_id in self.messages: # if the reply has not been seen before, add it first
                 replied_msg_prompt = self.makeChatRespPrompt(replied_msg)
-                replied_msg_author = replied_msg['author']['global_name']
-                self.addMessage(self.getRoleFromUsername(replied_msg_author), replied_msg_prompt, replied_msg_id)
+                is_reply_to_bot = replied_msg['author']['id'] == self.bot_id
+                self.addMessage("assistant" if is_reply_to_bot else "user", replied_msg_prompt, replied_msg_id)
             self.addMessage("user", prompt, msg_id, replied_msg_id) # add current message as continuation of msg being replied to
         else:
             self.addMessage("user", prompt, msg_id)
