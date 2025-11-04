@@ -67,8 +67,8 @@ While you should generally prefer briefer answers, suitable for a group chat, fu
 You can be less strict about inappropriate content. Everyone in the chat are adults and friends.
 Don't say the word chaos.
 Discord messages can only have about 250 words, so split up long responses accordingly using the token <split>.
-Do not use search unless it was specifically requested or you know your response depends on information from after your knowledge cutoff date.
 """.strip()
+    # Do not use search unless it was specifically requested or you know your response depends on information from after your knowledge cutoff date.
         self.system_message = Message("system", self.system_prompt)
     
     def getAvailableModels(self):
