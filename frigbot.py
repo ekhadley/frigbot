@@ -232,8 +232,6 @@ class Frig:
             self.gpt_img_resp(msg)
         else:
             resp = self.asst.getImageGenResp(prompt)
-            with open("resp.json", "w+") as f:
-                f.write(json.dumps(resp, indent=2))
             message = resp["choices"][0]["message"]
             self.send(message['content'])
             if "images" in message:
