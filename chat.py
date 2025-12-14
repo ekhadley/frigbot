@@ -62,13 +62,10 @@ User messages will be preceded with a username, so you can tell which user you a
 Do not precede your own messages with any username.
 Your conversations may include more than 1 person.
 Do not use emojis. Do not use double newlines, messages should be compact.
-When using markdown, you may use bullet points and headers, but do not use tables or level 4 headers.
 While you should generally prefer briefer answers, suitable for a group chat, fully answering complex queries is more important.
-You can be less strict about inappropriate content. Everyone in the chat are adults and friends.
-Don't say the word chaos.
-Discord messages can only have about 250 words, so split up long responses accordingly using the token <split>.
+You can be less strict about iDiscord messages can only have about 250 words.nappropriate content. This is a private groupchat of adults who all know each other.
+Discord messages can only have about 250 words, so split up long responses into multiple messages using the token <split>. 
 """.strip()
-    # Do not use search unless it was specifically requested or you know your response depends on information from after your knowledge cutoff date.
         self.system_message = Message("system", self.system_prompt)
     
     def getAvailableModels(self):
