@@ -44,6 +44,7 @@ class Frig:
         self.asst = ChatAssistant(
             chat_model_name = self.current_chat_model,
             image_model_name = self.current_image_model,
+            context_mode = "window",
             bot_id = self.id,
             key = self.keys['openrouter'],
             log_func = self.log,
@@ -112,6 +113,12 @@ class Frig:
             headers={"Authorization": self.token}
         )
         return resp
+
+    def getMessage(self, channel_id, message_id):
+        url = f"{self.url}/channels/{channel_id}/messages/{message_id}"
+        resp = requests.get(url, headers={"Authorization": self.token})
+        return resp.json() if resp.ok else None
+
     def getLatestMessage(self, num_messages=1) -> dict|list[dict]:
         url = f"{self.url}/channels/{self.chat_id}/messages?limit={num_messages}"
         resp = requests.get(url, headers={"Authorization":self.token})
@@ -120,6 +127,7 @@ class Frig:
             return None
         data = resp.json()
         return data[0] if len(data) == 1 else data
+    
     def getNewMessage(self):
         msg = self.getLatestMessage()
         if msg:
@@ -128,8 +136,14 @@ class Frig:
                 self.last_msg_id = msg_id
                 return True, msg
         return False, msg
+
     def botTaggedInMessage(self, msg) -> bool:
         return f"<@{self.id}>" in msg["content"]
+
+    def isReplyToBot(self, msg) -> bool:
+        if msg.get("referenced_message") is None: return False
+        return msg["referenced_message"]["author"]["id"] == self.id
+
     def getResponseToNewMessage(self, msg):
         body = msg["content"].lstrip()
         if body.startswith("!"):
@@ -145,9 +159,10 @@ class Frig:
             else:
                 self.log('warning', 'command_unknown', "Unknown command called", {'command': command_name})
                 return f"command '{command_name}' not recognized"
-        elif self.asst.requiresResponse(msg) or self.botTaggedInMessage(msg):
+        elif self.isReplyToBot(msg) or self.botTaggedInMessage(msg):
             self.log('info', 'chat_requested', "Chat completion requested via reply")
-            return self.chat_resp(msg)
+            input_context = self.getLatestMessage(num_messages=self.asst.window_size)
+            return self.chat_resp(input_context)
         elif random.random() > 0.9 and contains_scrambled(msg['content'], "itysl"):
             return self.itysl_reference_resp()
         return None
@@ -205,12 +220,12 @@ class Frig:
             return f"no image-capable model found for {model_name} [Available image models](<{self.asst.available_image_models_link}>)"
 
     def chat_resp(self, msg):
-        msg_id = msg.get("id")
-        self.asst.addMessageFromChat(msg)
+        chat_context = self.asst.makeContext(msg)
 
+        msg_id = msg[-1].get("id")
         self.log('info', 'chat_requested', "Chat completion requested", {'message_id': msg_id})
         try:
-            completion = self.asst.getCompletion(msg_id)
+            completion = self.asst.getCompletion(chat_context)
         except Exception as e:
             self.log('error', 'chat_failed', "Chat completion failed", {'message_id': msg_id, 'error': str(e)})
             self.logger.exception("Chat completion exception details")
@@ -222,8 +237,9 @@ class Frig:
                 split_completion.insert(i+1, comp[self.max_message_length:])
 
         resps = self.send(split_completion, reply_msg_id = msg_id)
-        for comp, resp in zip(split_completion, resps):
-            self.asst.addMessage("assistant", comp, resp["id"], msg_id)
+        if self.asst.context_mode == "tree":
+            for comp, resp in zip(split_completion, resps):
+                self.asst.addMessage("assistant", comp, resp["id"], msg_id)
         self.log('info', 'chat_completed', "Chat completion sent", {'message_id': msg_id})
 
     def img_resp(self, msg):

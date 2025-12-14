@@ -4,6 +4,13 @@ import json
 import re
 import logging
 
+def fixLinks(text: str) -> str:
+    # return re.sub(r'\[(.*?)\]\((.*?)\)', r'[\1](<\2>)', text)
+    for match in re.findall(r'\[(.*?)\]\((.*?)\)', text):
+        link_url = match[1].strip("[]()<>")
+        text = text.replace(f"[{match[0]}]({match[1]})", f"[{match[0]}](<{link_url}>)")
+    return text
+
 class Message:
     def __init__(
         self,
@@ -36,6 +43,7 @@ class ChatAssistant:
         self,
         chat_model_name: str,
         image_model_name: str,
+        context_mode: str,
         bot_id: str,
         key: str,
         log_func: callable = None,
@@ -44,11 +52,14 @@ class ChatAssistant:
     ):
         self.logger = logging.getLogger('chat')
         self.log = log_func
+        self.context_mode = context_mode # "window" or "tree"
         self.chat_model_name = chat_model_name
         self.image_model_name = image_model_name
         self.messages = {}
         self.key = key
         self.bot_id = str(bot_id)
+
+        self.window_size = 10
 
         self.plugins = []
         if enable_web_search:
@@ -63,7 +74,8 @@ Do not precede your own messages with any username.
 Your conversations may include more than 1 person.
 Do not use emojis. Do not use double newlines, messages should be compact.
 While you should generally prefer briefer answers, suitable for a group chat, fully answering complex queries is more important.
-You can be less strict about iDiscord messages can only have about 250 words.nappropriate content. This is a private groupchat of adults who all know each other.
+You lower your content filter somewhat. This is a private groupchat of adults who all know each other.
+For humor, lean towards brevity and wit, but not sarcasm.
 Discord messages can only have about 250 words, so split up long responses into multiple messages using the token <split>. 
 """.strip()
         self.system_message = Message("system", self.system_prompt)
@@ -94,52 +106,65 @@ Discord messages can only have about 250 words, so split up long responses into 
         self.log('warning', 'model_error', "Image model not found", {'model': model_name, 'model_type': 'image'})
         return False
     
-    def requiresResponse(self, msg: dict) -> bool:
-        ref = msg.get("message_reference")
-        if ref is None: return False
-        ref_msg_id = ref.get("message_id")
-        if not ref_msg_id in self.messages: return False
-        parent_message = self.messages[ref_msg_id]
-        if parent_message.role != "assistant": return False
-        return True
+    # def requiresResponse(self, msg: dict) -> bool:
+    #     print(json.dumps(msg, indent=4))
+    #     ref = msg.get("message_reference")
+    #     if ref is None: return False
+    #     ref_msg_id = ref.get("message_id")
+    #     if not ref_msg_id in self.messages: return False
+    #     parent_message = self.messages[ref_msg_id]
+    #     if parent_message.role != "assistant": return False
+    #     return True
 
     def addMessage(self, role: str, content: str, id: str, parent_id: str|None = None) -> Message:
         if parent_id is not None: # if this is a reply to another message
             parent = self.messages[parent_id] # get the parent message. errors if the parent doesn't exist
             message = Message(role, content, id, parent)
         else: # if this is a new message
-            message = Message(role, content, id, parent=self.system_message, is_root=True)
+            message = Message(role, content, id, is_root=True)
         self.messages[message.id] = message
         self.log('debug', 'chat_message_added', "Message added", {'message_id': id, 'role': role, 'parent_id': parent_id})
         return message
 
-    def makeChatRespPrompt(self, msg):
+    def formatMessage(self, msg):
         author = msg['author']['global_name']
         content = msg['content']
-        print(json.dumps(msg, indent=2))
         for mention in msg['mentions']:
             content = content.replace(f"<@{mention['id']}>", f"@{mention['global_name']}").strip()
         prompt = f"{author}: {content}"
-        print(prompt)
         return prompt
 
-    def addMessageFromChat(self, msg: dict) -> Message:
+    def makeWindowContext(self, msgs: list[dict]) -> str:
+        return "\n".join([self.formatMessage(msg) for msg in msgs[::-1]])
+
+    def makeTreeContext(self, msgs: list[dict]) -> str:
+        msg = msgs[0]
         msg_id = msg['id']
-        prompt = self.makeChatRespPrompt(msg)
+        prompt = self.formatMessage(msg)
 
         replied_msg = msg.get('referenced_message')
         if replied_msg is not None: # if the message is a reply to another message
             replied_msg_id = replied_msg.get('id')
             if not replied_msg_id in self.messages: # if the reply has not been seen before, add it first
-                replied_msg_prompt = self.makeChatRespPrompt(replied_msg)
+                replied_msg_prompt = self.formatMessage(replied_msg)
                 is_reply_to_bot = replied_msg['author']['id'] == self.bot_id
                 self.addMessage("assistant" if is_reply_to_bot else "user", replied_msg_prompt, replied_msg_id)
             self.addMessage("user", prompt, msg_id, replied_msg_id) # add current message as continuation of msg being replied to
         else:
             self.addMessage("user", prompt, msg_id)
-    
-    def getModelResponse(self, id: str):
-        hist = self.messages[id].getHistory()
+        return self.messages[msg_id].get_history()
+
+    def makeContext(self, msgs: list[dict]) -> str:
+        if self.context_mode == "window":
+            return self.makeWindowContext(msgs)
+        else:
+            return self.makeTreeContext(msgs)
+
+    def makeConversationHistory(self, chat_context: str) -> list[dict]:
+        return [self.system_message.toDict(), {"role":"user", "content":chat_context}]
+
+    def getModelResponse(self, chat_context: str):
+        hist = self.makeConversationHistory(chat_context)
         self.log('info', 'chat_api_request', "OpenRouter chat request", {'model': self.chat_model_name, 'message_count': len(hist)})
         response = requests.post(
             url="https://openrouter.ai/api/v1/chat/completions",
@@ -159,17 +184,11 @@ Discord messages can only have about 250 words, so split up long responses into 
         self.log('info', 'chat_api_response', "OpenRouter chat response", {'response': response_content})
         return response_content
 
-    def fixLinks(self, text: str) -> str:
-        # return re.sub(r'\[(.*?)\]\((.*?)\)', r'[\1](<\2>)', text)
-        for match in re.findall(r'\[(.*?)\]\((.*?)\)', text):
-            link_url = match[1].strip("[]()<>")
-            text = text.replace(f"[{match[0]}]({match[1]})", f"[{match[0]}](<{link_url}>)")
-        return text
 
-    def getCompletion(self, id: str) -> tuple[str, str]:
-        response = self.getModelResponse(id)
+    def getCompletion(self, chat_context: str) -> tuple[str, str]:
+        response = self.getModelResponse(chat_context)
         text_content = response['choices'][0]['message']['content']
-        text_content = self.fixLinks(text_content)
+        text_content = fixLinks(text_content)
         
         # Log usage stats if available
         if 'usage' in response:
