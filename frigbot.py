@@ -219,10 +219,10 @@ class Frig:
             self.log('warning', 'model_error', "Image model not found", {'model': model_name, 'model_type': 'image'})
             return f"no image-capable model found for {model_name} [Available image models](<{self.asst.available_image_models_link}>)"
 
-    def chat_resp(self, msg):
-        chat_context = self.asst.makeContext(msg)
+    def chat_resp(self, msgs):
+        chat_context = self.asst.makeContext(msgs)
 
-        msg_id = msg[-1].get("id")
+        msg_id = msgs[0]["id"]
         self.log('info', 'chat_requested', "Chat completion requested", {'message_id': msg_id})
         try:
             completion = self.asst.getCompletion(chat_context)
@@ -249,12 +249,13 @@ class Frig:
         else:
             resp = self.asst.getImageGenResp(prompt)
             message = resp["choices"][0]["message"]
-            self.send(message['content'])
             if "images" in message:
                 for img in message["images"]:
                     img_b64 = img["image_url"]["url"].split(",")[1]
                     img_bytes = base64.b64decode(img_b64)
                     self.send("", files={"file": ("output.png", img_bytes)})
+            else:
+                self.send(message['content'])
 
     def gpt_img_resp(self, msg):
         prompt = msg['content'].replace("!img", "").strip()
