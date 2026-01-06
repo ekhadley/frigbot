@@ -59,7 +59,7 @@ class ChatAssistant:
         self.key = key
         self.bot_id = str(bot_id)
 
-        self.window_size = 10
+        self.window_size = 100
 
         self.plugins = []
         if enable_web_search:

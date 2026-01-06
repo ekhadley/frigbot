@@ -8,24 +8,20 @@ FrigBot is a Discord bot that provides chat completions via OpenRouter, image ge
 
 ## Running the Bot
 
-**Start the bot (foreground):**
+**Start/check the systemd service:**
 ```bash
 ./frig
 ```
+Starts the service if not running, shows status if already running.
 
-**Start with test chat ID (DMs instead of group chat):**
+**Run in test mode (DMs instead of group chat):**
 ```bash
-./frig -t
-```
-
-**Start as systemd daemon (background):**
-```bash
-./frig -q
+./frig test
 ```
 
 **Stop the daemon:**
 ```bash
-./frigkill
+./frig kill
 ```
 
 ## Development Setup
@@ -48,19 +44,23 @@ The project uses `uv` for dependency management. Virtual environment is in `.ven
 - Supports loading from saved state via `Frig.load_from_state_dict()`
 - Provides `log(level, event_type, message, data)` helper method for structured JSON logging
 - Passes log function to ChatAssistant and lolManager for unified logging
+- Uses both OpenRouter (via ChatAssistant) and direct OpenAI client for image generation
 
 **chat.py - LLM integration (`ChatAssistant`)**
 - Tree-structured message history via `Message` class with parent/child relationships
-- Each Discord message becomes a node; replies create branches in the conversation tree
-- Calls OpenRouter API for chat completions with optional web search plugin
-- Supports both chat and image generation models
+- Two context modes: `window` (sliding window of recent messages) and `tree` (reply-chain based)
+- Calls OpenRouter API for chat completions with optional web search plugin (disabled by default)
+- Supports reasoning mode in chat completions
+- Supports both chat and image generation models via OpenRouter
 - Dynamic model switching at runtime
+- `fixLinks()` helper reformats markdown links for Discord compatibility
 - Receives log function from Frig for structured event logging
 
 **lolManager.py - Riot API integration**
 - Fetches ranked League of Legends data by summoner PUUID
-- Summoner PUUIDs stored in `summonerPUUIDs.json`
+- Summoner PUUIDs stored in `data/summonerPUUIDs.json`
 - Handles multiple queue types (RANKED_SOLO_5x5, RANKED_FLEX_SR)
+- Has `match_history()` method (partially implemented)
 - Receives log function from Frig for structured event logging
 
 **run.py - Entry point**
@@ -81,7 +81,10 @@ The project uses `uv` for dependency management. Virtual environment is in `.ven
 
 **utils.py - Discord message formatting utilities**
 - ANSI color codes for Discord message formatting (used in `!piggies` rank display)
+- Two sets of color codes: standard ANSI (for terminals) and Discord ANSI (prefixed with `a`)
+- `rankColors` dict maps tier names to Discord ANSI colors
 - `contains_scrambled()` for fuzzy string matching
+- `split_resp()` for splitting long messages
 - Note: These color codes are for Discord messages, not terminal/logging output
 
 ### Configuration Files
@@ -96,6 +99,7 @@ The project uses `uv` for dependency management. Virtual environment is in `.ven
 {
   "discord": "Bot token",
   "openrouter": "API key",
+  "openai": "API key (for direct image generation)",
   "riot": "API key",
   "tenor": "API key"
 }
@@ -106,13 +110,13 @@ The project uses `uv` for dependency management. Virtual environment is in `.ven
 1. `runloop()` polls for new messages every 2 seconds
 2. `getNewMessage()` checks if message is new and not from bot itself
 3. `getResponseToNewMessage()` routes to command handlers or chat completion
-4. For chat: `ChatAssistant.addMessageFromChat()` builds conversation tree
+4. For chat: `ChatAssistant.makeContext()` builds context (window or tree mode)
 5. `ChatAssistant.getCompletion()` calls OpenRouter with message history
 6. Response is split by `<split>` token and sent as multiple Discord messages
 
 ### Command System
 
-Commands are defined in `Frig.commands` dict (frigbot.py:54-72). Each maps a string like `"!help"` to a handler method. Handlers receive the raw Discord message dict and return strings or lists of strings to send.
+Commands are defined in `Frig.commands` dict (frigbot.py:56-74). Each maps a string like `"!help"` to a handler method. Handlers receive the raw Discord message dict and return strings or lists of strings to send.
 
 To add a new command:
 1. Add handler method to `Frig` class
@@ -135,13 +139,13 @@ self.log('error', 'api_error', "API call failed", {'status_code': 403, 'url': ur
 - `data`: Dict of structured event data (optional)
 
 **Event Types:**
-- System: `bot_started`, `bot_crashed`, `state_saved`, `state_loaded`
+- System: `bot_started`, `bot_starting`, `bot_crashed`, `state_saved`, `state_loaded`, `entering_main_loop`
 - Messages: `new_message`, `message_error`
 - Commands: `command_found`, `command_failed`, `command_unknown`
-- Chat: `chat_requested`, `chat_completed`, `chat_failed`, `chat_api_request`, `chat_api_error`, `chat_usage`
+- Chat: `chat_requested`, `chat_completed`, `chat_failed`, `chat_api_request`, `chat_api_response`, `chat_api_error`, `chat_usage`, `chat_message_added`
 - Models: `model_changed`, `model_error`
-- Images: `image_requested`, `image_generated`, `image_failed`, `image_api_request`, `image_api_error`
-- LoL: `lol_init`, `lol_lookup`, `lol_success`, `lol_api_error`, `lol_parse_error`
+- Images: `image_requested`, `image_generated`, `image_failed`, `image_api_request`, `image_api_response`, `image_api_error`
+- LoL: `lol_init`, `lol_lookup`, `lol_success`, `lol_api_error`, `lol_parse_error`, `lol_match_history`, `lol_list_summoners`
 - Games: `rps_new_player`, `rps_played`
 
 ChatAssistant and lolManager receive the log function from Frig during initialization and use it for all their logging.
@@ -149,8 +153,8 @@ ChatAssistant and lolManager receive the log function from Frig during initializ
 ### Chat Completion Behavior
 
 The bot responds to messages if:
-- Message is a reply to one of the bot's previous messages (`requiresResponse()`)
+- Message is a reply to one of the bot's previous messages (`isReplyToBot()`)
 - Bot is @mentioned (`botTaggedInMessage()`)
 - 10% chance if message contains scrambled "itysl" (easter egg)
 
-System prompt is configured in chat.py:64-76 with personality and Discord-specific constraints (no emojis, compact messages, splits for length limit).
+System prompt is configured in chat.py:70-80 with personality and Discord-specific constraints (no emojis, compact messages, splits for length limit).
