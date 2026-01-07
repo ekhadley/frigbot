@@ -10,26 +10,34 @@ case "$1" in
         "$project/.venv/bin/python" "$project/run.py" -t
         ;;
     kill)
-        # Kill the systemd service
-        sudo systemctl stop "$service_name"
-        systemctl status "$service_name"
+        # Kill the user service (no sudo needed)
+        systemctl --user stop "$service_name"
+        systemctl --user status "$service_name"
+        ;;
+    restart)
+        # Restart the service to reload all Python/config files
+        echo "Restarting $service_name..."
+        systemctl --user restart "$service_name"
+        sleep 1
+        systemctl --user status "$service_name" --no-pager
         ;;
     "")
         # Default: check if service is running, start if not, show status if running
-        if systemctl is-active --quiet "$service_name"; then
+        if systemctl --user is-active --quiet "$service_name"; then
             echo "Service is running. Status:"
-            systemctl status "$service_name" --no-pager
+            systemctl --user status "$service_name" --no-pager
         else
             echo "Service is not running. Starting..."
-            sudo systemctl start "$service_name"
+            systemctl --user start "$service_name"
             sleep 1
-            systemctl status "$service_name" --no-pager
+            systemctl --user status "$service_name" --no-pager
         fi
         ;;
     *)
-        echo "Usage: $0 [test|kill]"
-        echo "  test - Run in test DM channel with console output"
-        echo "  kill - Stop the systemd service"
+        echo "Usage: $0 [test|kill|restart]"
+        echo "  test    - Run in test DM channel with console output"
+        echo "  kill    - Stop the systemd service"
+        echo "  restart - Restart the service (reload all Python/config files)"
         echo "  (no args) - Start service if not running, show status if running"
         exit 1
         ;;

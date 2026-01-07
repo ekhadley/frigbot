@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(*)",
+      "Read(*)",
+      "Write(*)",
+      "Edit(*)",
+      "Glob(*)",
+      "Grep(*)",
+      "WebFetch(*)",
+      "WebSearch(*)",
+      "mcp__frig-discord__scroll_up(*)",
+      "mcp__frig-discord__send_message(*)"
+    ],
+    "deny": []
+  },
+  "mcpServers": {
+    "frig-discord": {
+      "command": "uv",
+      "args": ["run", "python", "-m", "frig_mcp.server"],
+      "cwd": "/home/ek/wgmn/frigbot"
+    }
+  }
+}

@@ -1,15 +1,13 @@
 import random
 import datetime
-import base64
 import time
 import json
+import subprocess
+import os
 import requests
-import traceback
 import logging
-from openai import OpenAI
 
 from lolManager import lolManager
-from chat import ChatAssistant
 
 from utils import red, endc, yellow, bold, cyan, gray, green, aendc, rankColors, abold
 from utils import contains_scrambled
@@ -39,19 +37,9 @@ class Frig:
         self.url = "https://discordapp.com/api/v9"
         self.token = self.keys['discord']
 
-        self.current_chat_model = "openai/gpt-5"
-        self.current_image_model = "openai/gpt-image-1"
-        self.asst = ChatAssistant(
-            chat_model_name = self.current_chat_model,
-            image_model_name = self.current_image_model,
-            context_mode = "window",
-            bot_id = self.id,
-            key = self.keys['openrouter'],
-            log_func = self.log,
-            enable_web_search = False
-        )
+        self.frigbot_dir = "/home/ek/wgmn/frigbot"
+        self.system_prompt_path = f"{self.frigbot_dir}/frig_system_prompt.md"
 
-        self.openai_client = OpenAI(api_key=self.keys['openai'])
         self.rps_scores = {}
         self.lol = lolManager(self.keys["riot"], "/home/ek/wgmn/frigbot/data/summonerPUUIDs.json", self.log)
         self.commands = {  # a dict of associations between commands (prefaced with a '!') and the functions they call to generate responses.
@@ -59,10 +47,6 @@ class Frig:
             "!commands":self.help_resp,
             "!cmds":self.help_resp,
             "!got":self.got_resp,
-            "!model":self.get_current_models,
-            "!setmodel":self.set_chat_model,
-            "!setimgmodel":self.set_image_model,
-            "!img":self.img_resp,
             "!rps":self.rps_resp,
             "!gif":self.random_gif_resp,
             "!roll":self.roll_resp,
@@ -161,12 +145,134 @@ class Frig:
                 self.log('warning', 'command_unknown', "Unknown command called", {'command': command_name})
                 return f"command '{command_name}' not recognized"
         elif self.isReplyToBot(msg) or self.botTaggedInMessage(msg):
-            self.log('info', 'chat_requested', "Chat completion requested via reply")
-            input_context = self.getLatestMessage(num_messages=self.asst.window_size)
-            return self.chat_resp(input_context)
+            self.log('info', 'chat_requested', "Chat requested via reply/mention")
+            self.invoke_claude(msg)
+            return None  # Claude Code handles sending via MCP tools
         elif random.random() > 0.9 and contains_scrambled(msg['content'], "itysl"):
             return self.itysl_reference_resp()
         return None
+
+    def invoke_claude(self, msg):
+        """Spawn Claude Code to handle the message."""
+        import traceback
+
+        author = msg.get("author", {}).get("global_name", "unknown")
+        content = msg.get("content", "")
+        msg_id = msg.get("id")
+
+        # Parse timestamp from Discord format (ISO 8601)
+        timestamp_str = msg.get("timestamp", "")
+        try:
+            ts = datetime.datetime.fromisoformat(timestamp_str.replace("Z", "+00:00"))
+            formatted_time = ts.strftime("%-m/%d/%y %-I:%M %p")
+        except:
+            formatted_time = ""
+
+        # Replace @mentions with usernames
+        for mention in msg.get("mentions", []):
+            mention_id = mention.get("id")
+            mention_name = mention.get("global_name") or mention.get("username", "unknown")
+            content = content.replace(f"<@{mention_id}>", f"@{mention_name}")
+
+        # Build the prompt from the trigger message
+        prompt = f"[{formatted_time}] {author}: {content}"
+
+        cmd = [
+            "claude",
+            "--print",
+            "--output-format", "json",
+            "--verbose",
+            "--dangerously-skip-permissions",
+            "--system-prompt", self.system_prompt_path,
+            "--mcp-config", f"{self.frigbot_dir}/.claude/settings.json",
+            "-p", prompt,
+        ]
+
+        env = {
+            **os.environ,
+            "FRIG_DISCORD_TOKEN": self.token,
+            "FRIG_CHANNEL_ID": str(self.chat_id),
+            "FRIG_TRIGGER_MESSAGE_ID": str(msg_id),
+        }
+
+        self.log('info', 'claude_invoked', "Spawning Claude Code", {
+            'author': author,
+            'message_id': msg_id,
+            'prompt': prompt,
+            'cmd': cmd,
+            'cwd': self.frigbot_dir,
+        })
+
+        try:
+            result = subprocess.run(
+                cmd,
+                env=env,
+                cwd=self.frigbot_dir,
+                capture_output=True,
+                text=True,
+                timeout=120,
+            )
+            # Parse JSON output for detailed tool logging
+            tool_calls = []
+            if result.stdout:
+                try:
+                    output = json.loads(result.stdout)
+                    messages = output if isinstance(output, list) else output.get("messages", [])
+
+                    for msg in messages:
+                        if not isinstance(msg, dict):
+                            continue
+                        msg_type = msg.get("type", "")
+
+                        if msg_type == "assistant":
+                            content = msg.get("message", {}).get("content", [])
+                            for block in content if isinstance(content, list) else [content]:
+                                if isinstance(block, dict):
+                                    if block.get("type") == "tool_use":
+                                        tool_name = block.get('name')
+                                        tool_input = block.get('input', {})
+                                        tool_calls.append({'tool': tool_name, 'input': tool_input})
+                                        self.log('info', 'claude_tool_use', f"Tool: {tool_name}", {
+                                            'tool': tool_name,
+                                            'input': tool_input,
+                                        })
+                                    elif block.get("type") == "text":
+                                        text = block.get('text', '')
+                                        if text.strip():
+                                            self.log('debug', 'claude_text', "Claude text output", {'text': text[:500]})
+                        elif msg_type == "tool_result":
+                            content = str(msg.get('content', ''))[:500]
+                            self.log('debug', 'claude_tool_result', "Tool result", {'content': content})
+                        elif msg_type == "result":
+                            result_text = str(msg.get('result', ''))[:500]
+                            self.log('info', 'claude_result', "Final result", {'result': result_text})
+                except json.JSONDecodeError:
+                    self.log('warning', 'claude_output_parse_error', "Could not parse JSON output", {
+                        'stdout': result.stdout[:1000]
+                    })
+
+            self.log('info', 'claude_completed', "Claude Code finished", {
+                'return_code': result.returncode,
+                'tool_calls': tool_calls,
+                'stderr': result.stderr[:500] if result.stderr else None,
+            })
+            if result.returncode != 0:
+                self.log('error', 'claude_error', "Claude Code non-zero exit", {
+                    'return_code': result.returncode,
+                    'stdout': result.stdout[:2000] if result.stdout else None,
+                    'stderr': result.stderr[:2000] if result.stderr else None,
+                })
+        except subprocess.TimeoutExpired as e:
+            self.log('error', 'claude_timeout', "Claude Code timed out", {
+                'stdout': e.stdout[:2000] if e.stdout else None,
+                'stderr': e.stderr[:2000] if e.stderr else None,
+            })
+        except Exception as e:
+            self.log('error', 'claude_exception', "Claude Code exception", {
+                'error': str(e),
+                'error_type': type(e).__name__,
+                'traceback': traceback.format_exc(),
+            })
 
     def runloop(self):
         self.log('info', 'bot_started', "FrigBot started", {'chat_id': self.chat_id})
@@ -193,102 +299,11 @@ class Frig:
     def itysl_reference_resp(self, query="itysl", num=500):
         return self.randomgif(query, num)
 
-    def get_current_models(self, *args, **kwargs):
-        return f"chat model: {self.current_chat_model}, image model: {self.current_image_model}"
-
-    def set_chat_model(self, msg: str):
-        msg_content = msg['content'] if isinstance(msg, dict) else msg
-        model_name = msg_content.replace("!setmodel", "").strip()
-        if self.asst.setChatModel(model_name):
-            self.current_chat_model = model_name
-            self.log('info', 'model_changed', "Chat model changed", {'model': model_name, 'model_type': 'chat'})
-            self.save_state()
-            return f"chat model set to {model_name}"
-        else:
-            self.log('warning', 'model_error', "Chat model not found", {'model': model_name, 'model_type': 'chat'})
-            return f"no model found for {model_name} [Available chat models](<{self.asst.available_chat_models_link}>)"
-
-    def set_image_model(self, msg: str):
-        msg_content = msg['content'] if isinstance(msg, dict) else msg
-        model_name = msg_content.replace("!setimgmodel", "").strip()
-        if model_name == "openai/gpt-image-1" or self.asst.setImageModel(model_name):
-            self.current_image_model = model_name
-            self.log('info', 'model_changed', "Image model changed", {'model': model_name, 'model_type': 'image'})
-            self.save_state()
-            return f"image model set to {model_name}"
-        else:
-            self.log('warning', 'model_error', "Image model not found", {'model': model_name, 'model_type': 'image'})
-            return f"no image-capable model found for {model_name} [Available image models](<{self.asst.available_image_models_link}>)"
-
-    def chat_resp(self, msgs):
-        chat_context = self.asst.makeContext(msgs)
-
-        msg_id = msgs[0]["id"]
-        self.log('info', 'chat_requested', "Chat completion requested", {'message_id': msg_id})
-        try:
-            completion = self.asst.getCompletion(chat_context)
-        except Exception as e:
-            self.log('error', 'chat_failed', "Chat completion failed", {'message_id': msg_id, 'error': str(e)})
-            self.logger.exception("Chat completion exception details")
-            return
-        split_completion = completion.replace("\n\n", "\n").strip().split("<split>")
-        for i, comp in enumerate(split_completion): # manually split any  completions that are too long,  if the model failed to do so manually
-            if len(comp) > self.max_message_length:
-                split_completion[i] = comp[:self.max_message_length]
-                split_completion.insert(i+1, comp[self.max_message_length:])
-
-        resps = self.send(split_completion, reply_msg_id = msg_id)
-        if self.asst.context_mode == "tree":
-            for comp, resp in zip(split_completion, resps):
-                self.asst.addMessage("assistant", comp, resp["id"], msg_id)
-        self.log('info', 'chat_completed', "Chat completion sent", {'message_id': msg_id})
-
-    def img_resp(self, msg):
-        prompt = msg['content'].replace("!img", "").strip()
-        if self.current_image_model == "openai/gpt-image-1":
-            self.gpt_img_resp(msg)
-        else:
-            resp = self.asst.getImageGenResp(prompt)
-            message = resp["choices"][0]["message"]
-            if "images" in message:
-                for img in message["images"]:
-                    img_b64 = img["image_url"]["url"].split(",")[1]
-                    img_bytes = base64.b64decode(img_b64)
-                    self.send("", files={"file": ("output.png", img_bytes)})
-            else:
-                self.send(message['content'])
-
-    def gpt_img_resp(self, msg):
-        prompt = msg['content'].replace("!img", "").strip()
-        self.log('info', 'image_requested', "Image generation started", {'prompt': prompt[:100], 'model': 'gpt-image-1'})
-        self.send(f"image gen started: '{prompt if len(prompt) < 15 else prompt[:15]+'...'}'")
-        try:
-            resp = self.openai_client.images.generate(
-                    model="gpt-image-1",
-                    prompt=prompt,
-                    moderation="low",
-                    quality="high",
-                )
-        except Exception as e:
-            self.log('error', 'image_failed', "Image generation failed", {'prompt': prompt[:100], 'error': str(e), 'error_code': getattr(e, 'code', None)})
-            self.logger.exception("Image generation exception details")
-            if e.code == "moderation_blocked":
-                return "no porn!!!"
-            return f"error while generating: '{e.code}'"
-
-        img_b64 = resp.data[0].b64_json
-        img_bytes = base64.b64decode(img_b64)
-        self.log('info', 'image_generated', "Image generated successfully", {'prompt': prompt[:100]})
-        self.send("", files={"file": ("output.png", img_bytes)})
-
     def help_resp(self, msg):
         command_descriptions = {
             "!help": "Displays this help message.",
             "!commands": "Alias for !help.",
             "!cmds": "Alias for !help.",
-            "!img": "Generates an image.",
-            "!setmodel": f"Sets the chat model. Usage: `!setmodel provider/model_name`. [Available chat models](<{self.asst.available_chat_models_link}>)",
-            "!setimgmodel": f"Sets the image model. Usage: `!setimgmodel provider/model_name`. [Available image models](<{self.asst.available_image_models_link}>)",
             "!rps": "Play rock-paper-scissors with the bot. Usage: `!rps [rock|paper|scissors]`.",
             "!gif": "Searches for a random GIF. Usage: `!gif [search term]`.",
             "!roll": "Rolls a random number. Usage: `!roll [max value]`.",
@@ -298,10 +313,10 @@ class Frig:
             "!coin": "Flips a coin.",
             "!uptime": "Shows how long Frig has been live without stopping."
         }
-        resp = "Available commands:"
+        resp = "Available commands:\n(@ or reply to frig for chat)"
         for cmd, desc in command_descriptions.items():
             resp += f"\n\t{cmd} - {desc}"
-        
+
         return resp
 
     def rps_resp(self, msg):
@@ -420,12 +435,10 @@ class Frig:
     def wait(self):
         time.sleep(self.loop_delay)
 
-    def state_dict(self): 
+    def state_dict(self):
         return {
             "keys_path": self.keys_path,
             "chat_id": self.chat_id,
-            "current_chat_model": self.current_chat_model,
-            "current_image_model": self.current_image_model,
             "rps_scores": self.rps_scores,
             "start_time": self.start_time.isoformat(),
             "save_time": datetime.datetime.now().isoformat(),
@@ -448,9 +461,7 @@ class Frig:
             chat_id=chat_id if chat_id is not None else saved_state["chat_id"],
             state_dict_path=path,
         )
-        frig.rps_scores = saved_state["rps_scores"]
-        frig.set_chat_model(saved_state["current_chat_model"])
-        frig.set_image_model(saved_state["current_image_model"])
+        frig.rps_scores = saved_state.get("rps_scores", {})
         frig.log('info', 'state_loaded', "State loaded", {'file': path})
         frig.save_state()
         return frig
