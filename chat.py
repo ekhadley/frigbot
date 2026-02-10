@@ -178,9 +178,15 @@ Discord messages can only have about 250 words, so split up long responses into 
                 }
             })
         )
-        if not response.ok:
-            self.log('error', 'chat_api_error', "OpenRouter API call failed", {'status_code': response.status_code, 'response': response.text})
         response_content = response.json()
+        if not response.ok:
+            error_msg = response_content.get('error', {}).get('message', response.text)
+            self.log('error', 'chat_api_error', "OpenRouter API call failed", {
+                'status_code': response.status_code,
+                'error': error_msg,
+                'metadata': response_content.get('error', {}).get('metadata'),
+            })
+            raise Exception(f"OpenRouter API error {response.status_code}: {error_msg}")
         self.log('info', 'chat_api_response', "OpenRouter chat response", {'response': response_content})
         return response_content
 
@@ -216,8 +222,14 @@ Discord messages can only have about 250 words, so split up long responses into 
                 "modalities": ["image", "text"]
             }
         )
-        if not response.ok:
-            self.log('error', 'image_api_error', "Image generation API call failed", {'status_code': response.status_code, 'response': response.text})
         response_content = response.json()
+        if not response.ok:
+            error_msg = response_content.get('error', {}).get('message', response.text)
+            self.log('error', 'image_api_error', "Image generation API call failed", {
+                'status_code': response.status_code,
+                'error': error_msg,
+                'metadata': response_content.get('error', {}).get('metadata'),
+            })
+            raise Exception(f"OpenRouter image API error {response.status_code}: {error_msg}")
         self.log('info', 'image_api_response', "Image generation response", {'response': response_content})
         return response_content
