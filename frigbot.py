@@ -41,7 +41,6 @@ class Frig:
         self.asst = ChatAssistant(
             chat_model_name = self.current_chat_model,
             image_model_name = self.current_image_model,
-            context_mode = "window",
             bot_id = self.id,
             key = os.environ['OPENROUTER_API_KEY'],
             log_func = self.log,
@@ -205,7 +204,6 @@ class Frig:
                 self.asst = AnthropicChatAssistant(
                     chat_model_name=model_name,
                     image_model_name=self.current_image_model,
-                    context_mode="window",
                     bot_id=self.id,
                     key=os.environ['ANTHROPIC_API_KEY'],
                     log_func=self.log,
@@ -216,7 +214,6 @@ class Frig:
                 self.asst = ChatAssistant(
                     chat_model_name=model_name,
                     image_model_name=self.current_image_model,
-                    context_mode="window",
                     bot_id=self.id,
                     key=os.environ['OPENROUTER_API_KEY'],
                     log_func=self.log,
@@ -266,10 +263,7 @@ class Frig:
                 split_completion[i] = comp[:self.max_message_length]
                 split_completion.insert(i+1, comp[self.max_message_length:])
 
-        resps = self.send(split_completion, reply_msg_id = msg_id)
-        if self.asst.context_mode == "tree":
-            for comp, resp in zip(split_completion, resps):
-                self.asst.addMessage("assistant", comp, resp["id"], msg_id)
+        self.send(split_completion, reply_msg_id = msg_id)
         self.log('info', 'chat_completed', "Chat completion sent", {'message_id': msg_id, 'backend': backend})
 
     def img_resp(self, msg):
@@ -360,7 +354,7 @@ class Frig:
             report = f"I chose {opts[botroll]}. W"
             self.rps_scores[win_key] += 1
         if (roll+1)%3 == botroll:
-            report = f"I chose {opts[botroll]}"
+            report = f"I chose {opts[botroll]}. L"
             self.rps_scores[loss_key] += 1
         self.log('debug', 'rps_played', "RPS game played", {'user_id': authorid, 'user_choice': opts[roll], 'bot_choice': opts[botroll]})
         

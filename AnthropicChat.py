@@ -8,7 +8,6 @@ class AnthropicChatAssistant(ChatAssistant):
         self,
         chat_model_name: str,
         image_model_name: str,
-        context_mode: str,
         bot_id: str,
         key: str,
         log_func: callable = None,
@@ -19,7 +18,6 @@ class AnthropicChatAssistant(ChatAssistant):
         super().__init__(
             chat_model_name=chat_model_name,
             image_model_name=image_model_name,
-            context_mode=context_mode,
             bot_id=bot_id,
             key=key,
             log_func=log_func,
@@ -39,10 +37,10 @@ class AnthropicChatAssistant(ChatAssistant):
         self.log('info', 'model_changed', "Chat model changed", {'model': model_name, 'model_type': 'chat'})
         return True
 
-    def makeConversationHistory(self, chat_context: str) -> list[dict]:
-        return [{"role": "user", "content": chat_context}]
+    def makeConversationHistory(self, chat_context: list[dict]) -> list[dict]:
+        return chat_context
 
-    def getModelResponse(self, chat_context: str):
+    def getModelResponse(self, chat_context: list[dict]):
         hist = self.makeConversationHistory(chat_context)
         self.log('info', 'chat_api_request', "Anthropic chat request", {'backend': 'anthropic', 'model': self.chat_model_name, 'message_count': len(hist)})
 
@@ -67,7 +65,7 @@ class AnthropicChatAssistant(ChatAssistant):
         self.log('info', 'chat_api_response', "Anthropic chat response", {'backend': 'anthropic', 'model': self.chat_model_name, 'stop_reason': response.stop_reason})
         return response
 
-    def getCompletion(self, chat_context: str) -> str:
+    def getCompletion(self, chat_context: list[dict]) -> str:
         response = self.getModelResponse(chat_context)
         text_parts = [block.text for block in response.content if block.type == "text"]
         text_content = "\n".join(text_parts)

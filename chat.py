@@ -43,7 +43,6 @@ class ChatAssistant:
         self,
         chat_model_name: str,
         image_model_name: str,
-        context_mode: str,
         bot_id: str,
         key: str,
         log_func: callable = None,
@@ -52,10 +51,8 @@ class ChatAssistant:
     ):
         self.logger = logging.getLogger('chat')
         self.log = log_func
-        self.context_mode = context_mode # "window" or "tree"
         self.chat_model_name = chat_model_name
         self.image_model_name = image_model_name
-        self.messages = {}
         self.key = key
         self.bot_id = str(bot_id)
 
@@ -106,64 +103,40 @@ Discord messages can only have about 250 words, so split up long responses into 
         self.log('warning', 'model_error', "Image model not found", {'model': model_name, 'model_type': 'image'})
         return False
     
-    # def requiresResponse(self, msg: dict) -> bool:
-    #     print(json.dumps(msg, indent=4))
-    #     ref = msg.get("message_reference")
-    #     if ref is None: return False
-    #     ref_msg_id = ref.get("message_id")
-    #     if not ref_msg_id in self.messages: return False
-    #     parent_message = self.messages[ref_msg_id]
-    #     if parent_message.role != "assistant": return False
-    #     return True
-
-    def addMessage(self, role: str, content: str, id: str, parent_id: str|None = None) -> Message:
-        if parent_id is not None: # if this is a reply to another message
-            parent = self.messages[parent_id] # get the parent message. errors if the parent doesn't exist
-            message = Message(role, content, id, parent)
-        else: # if this is a new message
-            message = Message(role, content, id, is_root=True)
-        self.messages[message.id] = message
-        self.log('debug', 'chat_message_added', "Message added", {'message_id': id, 'role': role, 'parent_id': parent_id})
-        return message
-
-    def formatMessage(self, msg):
-        author = msg['author']['global_name']
+    def resolveMentions(self, msg):
         content = msg['content']
         for mention in msg['mentions']:
             content = content.replace(f"<@{mention['id']}>", f"@{mention['global_name']}").strip()
-        prompt = f"{author}: {content}"
-        return prompt
+        return content
 
-    def makeWindowContext(self, msgs: list[dict]) -> str:
-        return "\n".join([self.formatMessage(msg) for msg in msgs[::-1]])
+    def formatMessage(self, msg):
+        author = msg['author']['global_name']
+        content = self.resolveMentions(msg)
+        return f"{author}: {content}"
 
-    def makeTreeContext(self, msgs: list[dict]) -> str:
-        msg = msgs[0]
-        msg_id = msg['id']
-        prompt = self.formatMessage(msg)
+    def makeContext(self, msgs: list[dict]) -> list[dict]:
+        chronological = msgs[::-1]
+        history = []
+        for msg in chronological:
+            is_bot = msg['author']['id'] == self.bot_id
+            role = "assistant" if is_bot else "user"
+            content = self.resolveMentions(msg) if is_bot else self.formatMessage(msg)
 
-        replied_msg = msg.get('referenced_message')
-        if replied_msg is not None: # if the message is a reply to another message
-            replied_msg_id = replied_msg.get('id')
-            if not replied_msg_id in self.messages: # if the reply has not been seen before, add it first
-                replied_msg_prompt = self.formatMessage(replied_msg)
-                is_reply_to_bot = replied_msg['author']['id'] == self.bot_id
-                self.addMessage("assistant" if is_reply_to_bot else "user", replied_msg_prompt, replied_msg_id)
-            self.addMessage("user", prompt, msg_id, replied_msg_id) # add current message as continuation of msg being replied to
-        else:
-            self.addMessage("user", prompt, msg_id)
-        return self.messages[msg_id].get_history()
+            if history and history[-1]["role"] == role:
+                history[-1]["content"] += "\n" + content
+            else:
+                history.append({"role": role, "content": content})
 
-    def makeContext(self, msgs: list[dict]) -> str:
-        if self.context_mode == "window":
-            return self.makeWindowContext(msgs)
-        else:
-            return self.makeTreeContext(msgs)
+        # API requires first message to be user role
+        if history and history[0]["role"] != "user":
+            history = history[1:]
 
-    def makeConversationHistory(self, chat_context: str) -> list[dict]:
-        return [self.system_message.toDict(), {"role":"user", "content":chat_context}]
+        return history
 
-    def getModelResponse(self, chat_context: str):
+    def makeConversationHistory(self, chat_context: list[dict]) -> list[dict]:
+        return [self.system_message.toDict()] + chat_context
+
+    def getModelResponse(self, chat_context: list[dict]):
         hist = self.makeConversationHistory(chat_context)
         self.log('info', 'chat_api_request', "OpenRouter chat request", {'backend': 'openrouter', 'model': self.chat_model_name, 'message_count': len(hist)})
         response = requests.post(
@@ -192,7 +165,7 @@ Discord messages can only have about 250 words, so split up long responses into 
         return response_content
 
 
-    def getCompletion(self, chat_context: str) -> tuple[str, str]:
+    def getCompletion(self, chat_context: list[dict]) -> str:
         response = self.getModelResponse(chat_context)
         text_content = response['choices'][0]['message']['content']
         text_content = fixLinks(text_content)

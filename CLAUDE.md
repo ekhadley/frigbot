@@ -60,7 +60,18 @@ The project uses `uv` for dependency management. Virtual environment is in `.ven
 - Subclass of `ChatAssistant`, inherits context building, message tree, `formatMessage`, `addMessage`
 - Uses Anthropic SDK directly instead of OpenRouter for `claude-*` models
 - Web search tool enabled by default (`web_search_20250305`)
+- Memory tool enabled by default (`memory_20250818`) via `LocalMemoryTool`
+- When memory is enabled, uses `client.beta.messages.tool_runner().until_done()` for the agentic loop (auto-executes memory tool calls)
+- When memory is disabled, falls back to `client.messages.create()`
 - Model routing: when user sets a `claude-*` model via `!setmodel`, `frigbot.py` swaps to this backend
+
+**memory_tool.py - Anthropic memory tool (`LocalMemoryTool`)**
+- Subclass of `BetaAbstractMemoryTool` from the Anthropic SDK
+- Filesystem-backed: maps virtual `/memories/...` paths to `{project_root}/memories/` on disk
+- Implements 6 methods: `view`, `create`, `str_replace`, `insert`, `delete`, `rename`
+- Path traversal protection prevents escaping the `memories/` directory
+- Claude uses this to persist information across conversations (user preferences, context, etc.)
+- The `memories/` directory is gitignored (runtime data)
 
 **lolManager.py - Riot API integration**
 - Fetches ranked League of Legends data by summoner PUUID
