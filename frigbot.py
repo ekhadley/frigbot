@@ -210,6 +210,7 @@ class Frig:
                     key=os.environ['ANTHROPIC_API_KEY'],
                     log_func=self.log,
                     enable_web_search=True,
+                    enable_memory=True,
                 )
             else:
                 self.asst = ChatAssistant(

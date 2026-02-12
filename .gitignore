@@ -5,3 +5,4 @@ data/
 logs/
 state.json
 .env
+memories/

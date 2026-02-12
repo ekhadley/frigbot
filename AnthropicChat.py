@@ -1,6 +1,7 @@
 import logging
 import anthropic
 from chat import ChatAssistant, fixLinks
+from memory_tool import LocalMemoryTool
 
 class AnthropicChatAssistant(ChatAssistant):
     def __init__(
@@ -13,6 +14,7 @@ class AnthropicChatAssistant(ChatAssistant):
         log_func: callable = None,
         system_prompt: str = None,
         enable_web_search: bool = True,
+        enable_memory: bool = True,
     ):
         super().__init__(
             chat_model_name=chat_model_name,
@@ -28,6 +30,9 @@ class AnthropicChatAssistant(ChatAssistant):
         self.tools = []
         if enable_web_search:
             self.tools.append({"type": "web_search_20250305", "name": "web_search"})
+        self.memory_tool = LocalMemoryTool() if enable_memory else None
+        if self.memory_tool:
+            self.tools.append(self.memory_tool)
 
     def setChatModel(self, model_name: str) -> bool:
         self.chat_model_name = model_name
@@ -40,13 +45,25 @@ class AnthropicChatAssistant(ChatAssistant):
     def getModelResponse(self, chat_context: str):
         hist = self.makeConversationHistory(chat_context)
         self.log('info', 'chat_api_request', "Anthropic chat request", {'backend': 'anthropic', 'model': self.chat_model_name, 'message_count': len(hist)})
-        response = self.client.messages.create(
-            model=self.chat_model_name,
-            max_tokens=4096,
-            system=self.system_prompt,
-            messages=hist,
-            tools=self.tools if self.tools else anthropic.NOT_GIVEN,
-        )
+
+        if self.memory_tool:
+            response = self.client.beta.messages.tool_runner(
+                model=self.chat_model_name,
+                max_tokens=4096,
+                system=self.system_prompt,
+                messages=hist,
+                tools=self.tools,
+                betas=["context-management-2025-06-27"],
+            ).until_done()
+        else:
+            response = self.client.messages.create(
+                model=self.chat_model_name,
+                max_tokens=4096,
+                system=self.system_prompt,
+                messages=hist,
+                tools=self.tools if self.tools else anthropic.NOT_GIVEN,
+            )
+
         self.log('info', 'chat_api_response', "Anthropic chat response", {'backend': 'anthropic', 'model': self.chat_model_name, 'stop_reason': response.stop_reason})
         return response
 
