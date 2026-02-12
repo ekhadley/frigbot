@@ -47,8 +47,9 @@ The project uses `uv` for dependency management. Virtual environment is in `.ven
 - Uses both OpenRouter (via ChatAssistant) and direct OpenAI client for image generation
 
 **chat.py - LLM integration (`ChatAssistant`)**
-- Tree-structured message history via `Message` class with parent/child relationships
-- Two context modes: `window` (sliding window of recent messages) and `tree` (reply-chain based)
+- Builds proper `user`/`assistant` role-annotated message history from Discord messages (bot messages get `assistant` role, others get `user` role with `"Author: content"` prefix)
+- Consecutive same-role messages are merged (required by both OpenRouter and Anthropic APIs)
+- `resolveMentions()` resolves `<@ID>` Discord mentions to `@name`; `formatMessage()` adds author prefix
 - Calls OpenRouter API for chat completions with optional web search plugin (disabled by default)
 - Supports reasoning mode in chat completions
 - Supports both chat and image generation models via OpenRouter
@@ -57,7 +58,7 @@ The project uses `uv` for dependency management. Virtual environment is in `.ven
 - Receives log function from Frig for structured event logging
 
 **AnthropicChat.py - Anthropic direct API integration (`AnthropicChatAssistant`)**
-- Subclass of `ChatAssistant`, inherits context building, message tree, `formatMessage`, `addMessage`
+- Subclass of `ChatAssistant`, inherits context building (`makeContext`), `formatMessage`, `resolveMentions`
 - Uses Anthropic SDK directly instead of OpenRouter for `claude-*` models
 - Web search tool enabled by default (`web_search_20250305`)
 - Memory tool enabled by default (`memory_20250818`) via `LocalMemoryTool`
@@ -124,13 +125,13 @@ The project uses `uv` for dependency management. Virtual environment is in `.ven
 1. `runloop()` polls for new messages every 2 seconds
 2. `getNewMessage()` checks if message is new and not from bot itself
 3. `getResponseToNewMessage()` routes to command handlers or chat completion
-4. For chat: `ChatAssistant.makeContext()` builds context (window or tree mode)
+4. For chat: `ChatAssistant.makeContext()` builds a `list[dict]` with proper `user`/`assistant` roles from the message window
 5. `ChatAssistant.getCompletion()` calls OpenRouter with message history
 6. Response is split by `<split>` token and sent as multiple Discord messages
 
 ### Command System
 
-Commands are defined in `Frig.commands` dict (frigbot.py:56-74). Each maps a string like `"!help"` to a handler method. Handlers receive the raw Discord message dict and return strings or lists of strings to send.
+Commands are defined in `Frig.commands` dict (frigbot.py:54-72). Each maps a string like `"!help"` to a handler method. Handlers receive the raw Discord message dict and return strings or lists of strings to send.
 
 To add a new command:
 1. Add handler method to `Frig` class
@@ -156,7 +157,7 @@ self.log('error', 'api_error', "API call failed", {'status_code': 403, 'url': ur
 - System: `bot_started`, `bot_starting`, `bot_crashed`, `state_saved`, `state_loaded`, `entering_main_loop`
 - Messages: `new_message`, `message_error`
 - Commands: `command_found`, `command_failed`, `command_unknown`
-- Chat: `chat_requested`, `chat_completed`, `chat_failed`, `chat_api_request`, `chat_api_response`, `chat_api_error`, `chat_usage`, `chat_message_added`
+- Chat: `chat_requested`, `chat_completed`, `chat_failed`, `chat_api_request`, `chat_api_response`, `chat_api_error`, `chat_usage`
 - Models: `model_changed`, `model_error`
 - Images: `image_requested`, `image_generated`, `image_failed`, `image_api_request`, `image_api_response`, `image_api_error`
 - LoL: `lol_init`, `lol_lookup`, `lol_success`, `lol_api_error`, `lol_parse_error`, `lol_match_history`, `lol_list_summoners`
@@ -171,4 +172,4 @@ The bot responds to messages if:
 - Bot is @mentioned (`botTaggedInMessage()`)
 - 10% chance if message contains scrambled "itysl" (easter egg)
 
-System prompt is configured in chat.py:70-80 with personality and Discord-specific constraints (no emojis, compact messages, splits for length limit).
+System prompt is configured in chat.py:67-77 with personality and Discord-specific constraints (no emojis, compact messages, splits for length limit).
