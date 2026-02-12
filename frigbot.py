@@ -359,7 +359,7 @@ class Frig:
             report = f"I chose {opts[botroll]}. W"
             self.rps_scores[win_key] += 1
         if (roll+1)%3 == botroll:
-            report = f"I chose {opts[botroll]}. shitter"
+            report = f"I chose {opts[botroll]}"
             self.rps_scores[loss_key] += 1
         self.log('debug', 'rps_played', "RPS game played", {'user_id': authorid, 'user_choice': opts[roll], 'bot_choice': opts[botroll]})
         
