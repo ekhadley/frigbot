@@ -1,3 +1,4 @@
+import os
 import random
 import datetime
 import base64
@@ -10,6 +11,7 @@ from openai import OpenAI
 
 from lolManager import lolManager
 from chat import ChatAssistant
+from AnthropicChat import AnthropicChatAssistant
 
 from utils import red, endc, yellow, bold, cyan, gray, green, aendc, rankColors, abold
 from utils import contains_scrambled
@@ -17,7 +19,6 @@ from utils import contains_scrambled
 class Frig:
     def __init__(
         self,
-        keys_path: str,
         chat_id: str,
         state_dict_path: str|None = None,
     ):
@@ -28,16 +29,12 @@ class Frig:
 
         self.max_message_length = 2_000
 
-        self.keys_path = keys_path
-        with open(keys_path) as f:
-            self.keys = json.load(f)
-
         self.start_time = datetime.datetime.now()
         self.state_dict_path = state_dict_path
 
         self.id = "352226045228875786"
         self.url = "https://discordapp.com/api/v9"
-        self.token = self.keys['discord']
+        self.token = os.environ['DISCORD_TOKEN']
 
         self.current_chat_model = "openai/gpt-5"
         self.current_image_model = "openai/gpt-image-1"
@@ -46,14 +43,14 @@ class Frig:
             image_model_name = self.current_image_model,
             context_mode = "window",
             bot_id = self.id,
-            key = self.keys['openrouter'],
+            key = os.environ['OPENROUTER_API_KEY'],
             log_func = self.log,
             enable_web_search = False
         )
 
-        self.openai_client = OpenAI(api_key=self.keys['openai'])
+        self.openai_client = OpenAI(api_key=os.environ['OPENAI_API_KEY'])
         self.rps_scores = {}
-        self.lol = lolManager(self.keys["riot"], "/home/ek/wgmn/frigbot/data/summonerPUUIDs.json", self.log)
+        self.lol = lolManager(os.environ['RIOT_API_KEY'], "/home/ek/wgmn/frigbot/data/summonerPUUIDs.json", self.log)
         self.commands = {  # a dict of associations between commands (prefaced with a '!') and the functions they call to generate responses.
             "!help":self.help_resp,
             "!commands":self.help_resp,
@@ -199,6 +196,36 @@ class Frig:
     def set_chat_model(self, msg: str):
         msg_content = msg['content'] if isinstance(msg, dict) else msg
         model_name = msg_content.replace("!setmodel", "").strip()
+
+        is_anthropic = model_name.startswith("claude-")
+        needs_swap = is_anthropic != isinstance(self.asst, AnthropicChatAssistant)
+
+        if needs_swap:
+            if is_anthropic:
+                self.asst = AnthropicChatAssistant(
+                    chat_model_name=model_name,
+                    image_model_name=self.current_image_model,
+                    context_mode="window",
+                    bot_id=self.id,
+                    key=os.environ['ANTHROPIC_API_KEY'],
+                    log_func=self.log,
+                    enable_web_search=True,
+                )
+            else:
+                self.asst = ChatAssistant(
+                    chat_model_name=model_name,
+                    image_model_name=self.current_image_model,
+                    context_mode="window",
+                    bot_id=self.id,
+                    key=os.environ['OPENROUTER_API_KEY'],
+                    log_func=self.log,
+                    enable_web_search=False,
+                )
+            self.current_chat_model = model_name
+            self.log('info', 'model_changed', "Chat model changed (backend swap)", {'model': model_name, 'backend': 'anthropic' if is_anthropic else 'openrouter'})
+            self.save_state()
+            return f"chat model set to {model_name} ({'anthropic' if is_anthropic else 'openrouter'})"
+
         if self.asst.setChatModel(model_name):
             self.current_chat_model = model_name
             self.log('info', 'model_changed', "Chat model changed", {'model': model_name, 'model_type': 'chat'})
@@ -395,7 +422,7 @@ class Frig:
     def got_resp(self, *args, **kwargs):
         return "https://tenor.com/view/sosig-gif-9357588"
     def gifsearch(self, query, num):
-        url = f"https://g.tenor.com/v2/search?q={query}&key={self.keys['tenor']}&limit={num}"
+        url = f"https://g.tenor.com/v2/search?q={query}&key={os.environ['TENOR_API_KEY']}&limit={num}"
         r = requests.get(url)
         gets = json.loads(r.content)["results"]
         urls = [g["url"] for g in gets]
@@ -420,9 +447,8 @@ class Frig:
     def wait(self):
         time.sleep(self.loop_delay)
 
-    def state_dict(self): 
+    def state_dict(self):
         return {
-            "keys_path": self.keys_path,
             "chat_id": self.chat_id,
             "current_chat_model": self.current_chat_model,
             "current_image_model": self.current_image_model,
@@ -438,13 +464,11 @@ class Frig:
     @staticmethod
     def load_from_state_dict(
             path: str,
-            keys_path: str|None = None,
             chat_id: str|None = None
         ):
         with open(path) as f:
             saved_state = json.load(f)
         frig = Frig(
-            keys_path=keys_path if keys_path is not None else saved_state["keys_path"],
             chat_id=chat_id if chat_id is not None else saved_state["chat_id"],
             state_dict_path=path,
         )

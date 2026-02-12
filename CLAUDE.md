@@ -56,6 +56,12 @@ The project uses `uv` for dependency management. Virtual environment is in `.ven
 - `fixLinks()` helper reformats markdown links for Discord compatibility
 - Receives log function from Frig for structured event logging
 
+**AnthropicChat.py - Anthropic direct API integration (`AnthropicChatAssistant`)**
+- Subclass of `ChatAssistant`, inherits context building, message tree, `formatMessage`, `addMessage`
+- Uses Anthropic SDK directly instead of OpenRouter for `claude-*` models
+- Web search tool enabled by default (`web_search_20250305`)
+- Model routing: when user sets a `claude-*` model via `!setmodel`, `frigbot.py` swaps to this backend
+
 **lolManager.py - Riot API integration**
 - Fetches ranked League of Legends data by summoner PUUID
 - Summoner PUUIDs stored in `data/summonerPUUIDs.json`
@@ -94,16 +100,13 @@ The project uses `uv` for dependency management. Virtual environment is in `.ven
 - RPS game scores per user
 - Bot start time and paths
 
-**Keys are stored externally** at `/home/ek/frigkeys.json` with this structure:
-```json
-{
-  "discord": "Bot token",
-  "openrouter": "API key",
-  "openai": "API key (for direct image generation)",
-  "riot": "API key",
-  "tenor": "API key"
-}
-```
+**Keys are stored in `.env`** (loaded by `python-dotenv` in `run.py`). See `.env.example` for the required variables:
+- `DISCORD_TOKEN` - Bot token
+- `OPENROUTER_API_KEY` - OpenRouter API key
+- `OPENAI_API_KEY` - OpenAI API key (for direct image generation)
+- `RIOT_API_KEY` - Riot API key
+- `TENOR_API_KEY` - Tenor API key
+- `ANTHROPIC_API_KEY` - Anthropic API key (for direct Claude model access)
 
 ### Message Flow
 
