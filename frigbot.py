@@ -251,7 +251,8 @@ class Frig:
         chat_context = self.asst.makeContext(msgs)
 
         msg_id = msgs[0]["id"]
-        self.log('info', 'chat_requested', "Chat completion requested", {'message_id': msg_id})
+        backend = 'anthropic' if isinstance(self.asst, AnthropicChatAssistant) else 'openrouter'
+        self.log('info', 'chat_requested', "Chat completion requested", {'message_id': msg_id, 'backend': backend})
         try:
             completion = self.asst.getCompletion(chat_context)
         except Exception as e:
@@ -268,7 +269,7 @@ class Frig:
         if self.asst.context_mode == "tree":
             for comp, resp in zip(split_completion, resps):
                 self.asst.addMessage("assistant", comp, resp["id"], msg_id)
-        self.log('info', 'chat_completed', "Chat completion sent", {'message_id': msg_id})
+        self.log('info', 'chat_completed', "Chat completion sent", {'message_id': msg_id, 'backend': backend})
 
     def img_resp(self, msg):
         prompt = msg['content'].replace("!img", "").strip()

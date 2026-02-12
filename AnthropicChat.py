@@ -39,7 +39,7 @@ class AnthropicChatAssistant(ChatAssistant):
 
     def getModelResponse(self, chat_context: str):
         hist = self.makeConversationHistory(chat_context)
-        self.log('info', 'chat_api_request', "Anthropic chat request", {'model': self.chat_model_name, 'message_count': len(hist)})
+        self.log('info', 'chat_api_request', "Anthropic chat request", {'backend': 'anthropic', 'model': self.chat_model_name, 'message_count': len(hist)})
         response = self.client.messages.create(
             model=self.chat_model_name,
             max_tokens=4096,
@@ -47,7 +47,7 @@ class AnthropicChatAssistant(ChatAssistant):
             messages=hist,
             tools=self.tools if self.tools else anthropic.NOT_GIVEN,
         )
-        self.log('info', 'chat_api_response', "Anthropic chat response", {'model': self.chat_model_name, 'stop_reason': response.stop_reason})
+        self.log('info', 'chat_api_response', "Anthropic chat response", {'backend': 'anthropic', 'model': self.chat_model_name, 'stop_reason': response.stop_reason})
         return response
 
     def getCompletion(self, chat_context: str) -> str:
@@ -57,6 +57,7 @@ class AnthropicChatAssistant(ChatAssistant):
         text_content = fixLinks(text_content)
 
         self.log('info', 'chat_usage', "Completion usage", {
+            'backend': 'anthropic',
             'prompt_tokens': response.usage.input_tokens,
             'completion_tokens': response.usage.output_tokens,
             'total_tokens': response.usage.input_tokens + response.usage.output_tokens,

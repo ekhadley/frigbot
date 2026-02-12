@@ -165,7 +165,7 @@ Discord messages can only have about 250 words, so split up long responses into 
 
     def getModelResponse(self, chat_context: str):
         hist = self.makeConversationHistory(chat_context)
-        self.log('info', 'chat_api_request', "OpenRouter chat request", {'model': self.chat_model_name, 'message_count': len(hist)})
+        self.log('info', 'chat_api_request', "OpenRouter chat request", {'backend': 'openrouter', 'model': self.chat_model_name, 'message_count': len(hist)})
         response = requests.post(
             url="https://openrouter.ai/api/v1/chat/completions",
             headers={ "Authorization": f"Bearer {self.key}"},
@@ -182,12 +182,13 @@ Discord messages can only have about 250 words, so split up long responses into 
         if not response.ok:
             error_msg = response_content.get('error', {}).get('message', response.text)
             self.log('error', 'chat_api_error', "OpenRouter API call failed", {
+                'backend': 'openrouter',
                 'status_code': response.status_code,
                 'error': error_msg,
                 'metadata': response_content.get('error', {}).get('metadata'),
             })
             raise Exception(f"OpenRouter API error {response.status_code}: {error_msg}")
-        self.log('info', 'chat_api_response', "OpenRouter chat response", {'response': response_content})
+        self.log('info', 'chat_api_response', "OpenRouter chat response", {'backend': 'openrouter', 'response': response_content})
         return response_content
 
 
@@ -199,7 +200,7 @@ Discord messages can only have about 250 words, so split up long responses into 
         # Log usage stats if available
         if 'usage' in response:
             usage = response['usage']
-            self.log('info', 'chat_usage', "Completion usage", {'prompt_tokens': usage.get('prompt_tokens'), 'completion_tokens': usage.get('completion_tokens'), 'total_tokens': usage.get('total_tokens')})
+            self.log('info', 'chat_usage', "Completion usage", {'backend': 'openrouter', 'prompt_tokens': usage.get('prompt_tokens'), 'completion_tokens': usage.get('completion_tokens'), 'total_tokens': usage.get('total_tokens')})
         
         return text_content
     
