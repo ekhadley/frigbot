@@ -197,7 +197,7 @@ class Frig:
         msg_content = msg['content'] if isinstance(msg, dict) else msg
         model_name = msg_content.replace("!setmodel", "").strip()
 
-        is_anthropic = model_name.startswith("claude-")
+        is_anthropic = "claude" in model_name.lower()
         needs_swap = is_anthropic != isinstance(self.asst, AnthropicChatAssistant)
 
         if needs_swap:
