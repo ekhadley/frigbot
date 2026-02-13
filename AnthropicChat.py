@@ -56,6 +56,7 @@ class AnthropicChatAssistant(ChatAssistant):
                 messages=hist,
                 tools=self.tools,
                 betas=["context-management-2025-06-27"],
+                stream=True,
             )
             start_time = time.time()
             self.log('info', 'tool_runner_started', "Tool runner started", {'timeout': TOOL_LOOP_TIMEOUT})
@@ -70,13 +71,14 @@ class AnthropicChatAssistant(ChatAssistant):
             elapsed = time.time() - start_time
             self.log('info', 'tool_runner_done', "Tool runner completed", {'elapsed': round(elapsed, 2)})
         else:
-            response = self.client.messages.create(
+            with self.client.messages.stream(
                 model=self.chat_model_name,
                 max_tokens=100_000,
                 system=self.system_prompt,
                 messages=hist,
                 tools=self.tools if self.tools else anthropic.NOT_GIVEN,
-            )
+            ) as stream:
+                response = stream.get_final_message()
 
         content_types = [block.type for block in response.content]
         has_web_search = any(t in ('server_tool_use', 'web_search_tool_result') for t in content_types)

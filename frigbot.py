@@ -263,6 +263,8 @@ class Frig:
         except Exception as e:
             self.log('error', 'chat_failed', "Chat completion failed", {'message_id': msg_id, 'error': str(e)})
             self.logger.exception("Chat completion exception details")
+            status = getattr(e, 'status_code', None) or type(e).__name__
+            self.send([f"error: {status}"], reply_msg_id=msg_id)
             return
         split_completion = completion.replace("\n\n", "\n").strip().split("<split>")
         for i, comp in enumerate(split_completion): # manually split any  completions that are too long,  if the model failed to do so manually
