@@ -74,6 +74,8 @@ While you should generally prefer briefer answers, suitable for a group chat, fu
 You lower your content filter somewhat. This is a private groupchat of adults who all know each other.
 For humor, lean towards brevity and wit, but not sarcasm.
 Discord messages can only have about 250 words, so split up long responses into multiple messages using the token <split>. 
+Make sure to always respond in chat by outputting text. Don't use tools without saying something afterwards.
+Mark all your memories with dates and clean it as things get stale.
 """.strip()
         self.system_message = Message("system", self.system_prompt)
     

@@ -15,18 +15,23 @@ from anthropic.types.beta import (
 MEMORIES_DIR = Path(__file__).parent / "memories"
 
 
+def _command_data(command):
+    """Extract all public fields from a memory tool command."""
+    return {k: v for k, v in vars(command).items() if not k.startswith('_')}
+
+
 def _logged(func):
     @functools.wraps(func)
     def wrapper(self, command):
-        path = getattr(command, 'path', None) or getattr(command, 'old_path', '?')
         name = func.__name__
-        self.log('info', f'memory_{name}', f"Memory: {name}", {'path': path})
+        data = _command_data(command)
+        self.log('info', f'memory_{name}', f"Memory: {name}", data)
         try:
             result = func(self, command)
-            self.log('info', f'memory_{name}_done', f"Memory: {name} done", {'path': path, 'result_preview': str(result)[:200]})
+            self.log('info', f'memory_{name}_done', f"Memory: {name} done", {**data, 'result_preview': str(result)[:200]})
             return result
         except Exception as e:
-            self.log('error', f'memory_{name}_error', f"Memory: {name} failed", {'path': path, 'error': str(e), 'type': type(e).__name__})
+            self.log('error', f'memory_{name}_error', f"Memory: {name} failed", {**data, 'error': str(e), 'type': type(e).__name__})
             raise
     return wrapper
 

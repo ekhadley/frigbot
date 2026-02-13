@@ -60,10 +60,22 @@ class AnthropicChatAssistant(ChatAssistant):
             )
             start_time = time.time()
             self.log('info', 'tool_runner_started', "Tool runner started", {'timeout': TOOL_LOOP_TIMEOUT})
+
+            def collect_all_turns():
+                all_text = []
+                last_msg = None
+                for stream in runner:
+                    message = stream.get_final_message()
+                    for block in message.content:
+                        if block.type == "text" and block.text.strip():
+                            all_text.append(block.text)
+                    last_msg = message
+                return last_msg, all_text
+
             with ThreadPoolExecutor(max_workers=1) as executor:
-                future = executor.submit(runner.until_done)
+                future = executor.submit(collect_all_turns)
                 try:
-                    response = future.result(timeout=TOOL_LOOP_TIMEOUT)
+                    response, all_text_parts = future.result(timeout=TOOL_LOOP_TIMEOUT)
                 except FuturesTimeoutError:
                     elapsed = time.time() - start_time
                     self.log('error', 'chat_timeout', "Tool runner timed out", {'timeout': TOOL_LOOP_TIMEOUT, 'elapsed': round(elapsed, 2)})
@@ -79,6 +91,7 @@ class AnthropicChatAssistant(ChatAssistant):
                 tools=self.tools if self.tools else anthropic.NOT_GIVEN,
             ) as stream:
                 response = stream.get_final_message()
+            all_text_parts = [block.text for block in response.content if block.type == "text"]
 
         content_types = [block.type for block in response.content]
         has_web_search = any(t in ('server_tool_use', 'web_search_tool_result') for t in content_types)
@@ -87,16 +100,15 @@ class AnthropicChatAssistant(ChatAssistant):
             'model': self.chat_model_name,
             'stop_reason': response.stop_reason,
             'content_block_types': content_types,
-            'has_text': any(t == 'text' for t in content_types),
+            'has_text': bool(all_text_parts),
             'has_web_search': has_web_search,
         })
         if has_web_search:
             self.log('info', 'web_search_used', "Web search was used in response")
-        return response
+        return response, all_text_parts
 
     def getCompletion(self, chat_context: list[dict]) -> str:
-        response = self.getModelResponse(chat_context)
-        text_parts = [block.text for block in response.content if block.type == "text"]
+        response, text_parts = self.getModelResponse(chat_context)
         text_content = "\n".join(text_parts)
 
         if not text_content.strip():
