@@ -96,13 +96,20 @@ class Frig:
             else:
                 post_data = { 'content': str(msg), 'message_reference': { 'message_id':reply_msg_id, 'channel_id':self.chat_id }}
 
-            send_resp = requests.post(
+            resp = requests.post(
                 f"{self.url}/channels/{self.chat_id}/messages",
                 json = post_data,
                 headers = { "Authorization":self.token },
                 files = files
-            ).json()
-            return send_resp
+            )
+            if not resp.ok:
+                self.log('error', 'send_failed', "Discord send failed", {
+                    'status_code': resp.status_code,
+                    'response': resp.text[:500],
+                    'content_preview': str(msg)[:200],
+                    'content_length': len(str(msg)),
+                })
+            return resp.json()
     def editMessage(self, message_id, new_content):
         resp = requests.patch(
             f"{self.url}/channels/{self.chat_id}/messages/{message_id}",

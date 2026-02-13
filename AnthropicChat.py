@@ -1,7 +1,11 @@
 import logging
+import time
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 import anthropic
 from chat import ChatAssistant, fixLinks
 from memory_tool import LocalMemoryTool
+
+TOOL_LOOP_TIMEOUT = 120  # seconds
 
 class AnthropicChatAssistant(ChatAssistant):
     def __init__(
@@ -28,7 +32,7 @@ class AnthropicChatAssistant(ChatAssistant):
         self.tools = []
         if enable_web_search:
             self.tools.append({"type": "web_search_20250305", "name": "web_search"})
-        self.memory_tool = LocalMemoryTool() if enable_memory else None
+        self.memory_tool = LocalMemoryTool(log_func=log_func) if enable_memory else None
         if self.memory_tool:
             self.tools.append(self.memory_tool)
 
@@ -45,30 +49,61 @@ class AnthropicChatAssistant(ChatAssistant):
         self.log('info', 'chat_api_request', "Anthropic chat request", {'backend': 'anthropic', 'model': self.chat_model_name, 'message_count': len(hist)})
 
         if self.memory_tool:
-            response = self.client.beta.messages.tool_runner(
+            runner = self.client.beta.messages.tool_runner(
                 model=self.chat_model_name,
-                max_tokens=4096,
+                max_tokens=100_000,
                 system=self.system_prompt,
                 messages=hist,
                 tools=self.tools,
                 betas=["context-management-2025-06-27"],
-            ).until_done()
+            )
+            start_time = time.time()
+            self.log('info', 'tool_runner_started', "Tool runner started", {'timeout': TOOL_LOOP_TIMEOUT})
+            with ThreadPoolExecutor(max_workers=1) as executor:
+                future = executor.submit(runner.until_done)
+                try:
+                    response = future.result(timeout=TOOL_LOOP_TIMEOUT)
+                except FuturesTimeoutError:
+                    elapsed = time.time() - start_time
+                    self.log('error', 'chat_timeout', "Tool runner timed out", {'timeout': TOOL_LOOP_TIMEOUT, 'elapsed': round(elapsed, 2)})
+                    raise TimeoutError(f"Tool runner timed out after {elapsed:.1f}s")
+            elapsed = time.time() - start_time
+            self.log('info', 'tool_runner_done', "Tool runner completed", {'elapsed': round(elapsed, 2)})
         else:
             response = self.client.messages.create(
                 model=self.chat_model_name,
-                max_tokens=4096,
+                max_tokens=100_000,
                 system=self.system_prompt,
                 messages=hist,
                 tools=self.tools if self.tools else anthropic.NOT_GIVEN,
             )
 
-        self.log('info', 'chat_api_response', "Anthropic chat response", {'backend': 'anthropic', 'model': self.chat_model_name, 'stop_reason': response.stop_reason})
+        content_types = [block.type for block in response.content]
+        has_web_search = any(t in ('server_tool_use', 'web_search_tool_result') for t in content_types)
+        self.log('info', 'chat_api_response', "Anthropic chat response", {
+            'backend': 'anthropic',
+            'model': self.chat_model_name,
+            'stop_reason': response.stop_reason,
+            'content_block_types': content_types,
+            'has_text': any(t == 'text' for t in content_types),
+            'has_web_search': has_web_search,
+        })
+        if has_web_search:
+            self.log('info', 'web_search_used', "Web search was used in response")
         return response
 
     def getCompletion(self, chat_context: list[dict]) -> str:
         response = self.getModelResponse(chat_context)
         text_parts = [block.text for block in response.content if block.type == "text"]
         text_content = "\n".join(text_parts)
+
+        if not text_content.strip():
+            self.log('warning', 'chat_empty_response', "Response contained no text content", {
+                'stop_reason': response.stop_reason,
+                'content_block_types': [block.type for block in response.content],
+            })
+            text_content = "(I processed your request but generated no text response)"
+
         text_content = fixLinks(text_content)
 
         self.log('info', 'chat_usage', "Completion usage", {

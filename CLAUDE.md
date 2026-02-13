@@ -138,6 +138,10 @@ To add a new command:
 2. Register in `self.commands` dict in `__init__`
 3. Add description to `help_resp()` command_descriptions dict
 
+### Logging Philosophy
+
+**Gigalogging.** Log aggressively. Every operation that could fail, every external API call, every tool invocation, and every response should be logged with full context. Silent failures are bugs. When in doubt, log it.
+
 ### Logging System
 
 All logging uses the `log(level, event_type, message, data)` helper method:
@@ -157,7 +161,11 @@ self.log('error', 'api_error', "API call failed", {'status_code': 403, 'url': ur
 - System: `bot_started`, `bot_starting`, `bot_crashed`, `state_saved`, `state_loaded`, `entering_main_loop`
 - Messages: `new_message`, `message_error`
 - Commands: `command_found`, `command_failed`, `command_unknown`
-- Chat: `chat_requested`, `chat_completed`, `chat_failed`, `chat_api_request`, `chat_api_response`, `chat_api_error`, `chat_usage`
+- Chat: `chat_requested`, `chat_completed`, `chat_failed`, `chat_api_request`, `chat_api_response`, `chat_api_error`, `chat_usage`, `chat_empty_response`, `chat_timeout`
+- Tool runner: `tool_runner_started`, `tool_runner_done`
+- Web search: `web_search_used`
+- Memory tool: `memory_view`, `memory_view_done`, `memory_create`, `memory_create_done`, `memory_str_replace`, `memory_str_replace_done`, `memory_insert`, `memory_insert_done`, `memory_delete`, `memory_delete_done`, `memory_rename`, `memory_rename_done` (plus `_error` variants)
+- Discord: `send_failed`
 - Models: `model_changed`, `model_error`
 - Images: `image_requested`, `image_generated`, `image_failed`, `image_api_request`, `image_api_response`, `image_api_error`
 - LoL: `lol_init`, `lol_lookup`, `lol_success`, `lol_api_error`, `lol_parse_error`, `lol_match_history`, `lol_list_summoners`

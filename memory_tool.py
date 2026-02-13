@@ -1,5 +1,6 @@
 import os
 import shutil
+import functools
 from pathlib import Path
 from anthropic.lib.tools import BetaAbstractMemoryTool
 from anthropic.types.beta import (
@@ -14,10 +15,27 @@ from anthropic.types.beta import (
 MEMORIES_DIR = Path(__file__).parent / "memories"
 
 
+def _logged(func):
+    @functools.wraps(func)
+    def wrapper(self, command):
+        path = getattr(command, 'path', None) or getattr(command, 'old_path', '?')
+        name = func.__name__
+        self.log('info', f'memory_{name}', f"Memory: {name}", {'path': path})
+        try:
+            result = func(self, command)
+            self.log('info', f'memory_{name}_done', f"Memory: {name} done", {'path': path, 'result_preview': str(result)[:200]})
+            return result
+        except Exception as e:
+            self.log('error', f'memory_{name}_error', f"Memory: {name} failed", {'path': path, 'error': str(e), 'type': type(e).__name__})
+            raise
+    return wrapper
+
+
 class LocalMemoryTool(BetaAbstractMemoryTool):
-    def __init__(self):
+    def __init__(self, log_func=None):
         super().__init__()
         MEMORIES_DIR.mkdir(exist_ok=True)
+        self.log = log_func or (lambda *a, **kw: None)
 
     def _resolve(self, virtual_path: str) -> Path:
         """Resolve a /memories/... virtual path to a real filesystem path, preventing traversal."""
@@ -30,6 +48,7 @@ class LocalMemoryTool(BetaAbstractMemoryTool):
             raise ValueError(f"Path traversal denied: {virtual_path}")
         return resolved
 
+    @_logged
     def view(self, command: BetaMemoryTool20250818ViewCommand) -> str:
         path = self._resolve(command.path)
         if path.is_dir():
@@ -68,6 +87,7 @@ class LocalMemoryTool(BetaAbstractMemoryTool):
             return f"{virtual_path}: (empty directory)"
         return f"{virtual_path}:\n" + "\n".join(entries)
 
+    @_logged
     def create(self, command: BetaMemoryTool20250818CreateCommand) -> str:
         path = self._resolve(command.path)
         if path.exists():
@@ -76,6 +96,7 @@ class LocalMemoryTool(BetaAbstractMemoryTool):
         path.write_text(command.file_text)
         return f"Created {command.path}"
 
+    @_logged
     def str_replace(self, command: BetaMemoryTool20250818StrReplaceCommand) -> str:
         path = self._resolve(command.path)
         if not path.exists():
@@ -89,6 +110,7 @@ class LocalMemoryTool(BetaAbstractMemoryTool):
         path.write_text(content.replace(command.old_str, command.new_str, 1))
         return f"Replaced in {command.path}"
 
+    @_logged
     def insert(self, command: BetaMemoryTool20250818InsertCommand) -> str:
         path = self._resolve(command.path)
         if not path.exists():
@@ -101,6 +123,7 @@ class LocalMemoryTool(BetaAbstractMemoryTool):
         path.write_text("".join(lines))
         return f"Inserted at line {insert_pos} in {command.path}"
 
+    @_logged
     def delete(self, command: BetaMemoryTool20250818DeleteCommand) -> str:
         path = self._resolve(command.path)
         if not path.exists():
@@ -111,6 +134,7 @@ class LocalMemoryTool(BetaAbstractMemoryTool):
             path.unlink()
         return f"Deleted {command.path}"
 
+    @_logged
     def rename(self, command: BetaMemoryTool20250818RenameCommand) -> str:
         old = self._resolve(command.old_path)
         new = self._resolve(command.new_path)
