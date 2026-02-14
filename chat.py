@@ -114,7 +114,12 @@ Mark all your memories with dates and clean it as things get stale.
     def formatMessage(self, msg):
         author = msg['author']['global_name']
         content = self.resolveMentions(msg)
-        return f"{author}: {content}"
+        prefix = ""
+        if ref := msg.get('referenced_message'):
+            ref_author = ref['author']['global_name']
+            ref_text = ref['content'][:30] + ('...' if len(ref['content']) > 30 else '')
+            prefix = f"[Reply to {ref_author}: '{ref_text}'] "
+        return f"{prefix}{author}: {content}"
 
     def makeContext(self, msgs: list[dict]) -> list[dict]:
         chronological = msgs[::-1]
