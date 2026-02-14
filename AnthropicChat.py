@@ -52,7 +52,7 @@ class AnthropicChatAssistant(ChatAssistant):
             runner = self.client.beta.messages.tool_runner(
                 model=self.chat_model_name,
                 max_tokens=100_000,
-                system=self.system_prompt,
+                system=self._build_system_prompt(),
                 messages=hist,
                 tools=self.tools,
                 betas=["context-management-2025-06-27"],
@@ -86,7 +86,7 @@ class AnthropicChatAssistant(ChatAssistant):
             with self.client.messages.stream(
                 model=self.chat_model_name,
                 max_tokens=100_000,
-                system=self.system_prompt,
+                system=self._build_system_prompt(),
                 messages=hist,
                 tools=self.tools if self.tools else anthropic.NOT_GIVEN,
             ) as stream:

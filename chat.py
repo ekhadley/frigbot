@@ -3,6 +3,9 @@ import requests
 import json
 import re
 import logging
+from pathlib import Path
+
+MEMORIES_DIR = Path(__file__).parent / "memories"
 
 def fixLinks(text: str) -> str:
     # return re.sub(r'\[(.*?)\]\((.*?)\)', r'[\1](<\2>)', text)
@@ -64,7 +67,7 @@ class ChatAssistant:
 
         self.available_chat_models_link = "https://openrouter.ai/models?fmt=cards&output_modalities=text"
         self.available_image_models_link = "https://openrouter.ai/models?fmt=cards&output_modalities=image"
-        self.system_prompt = f"""
+        self.system_instructions = """
 You are an assistant integrated into a Discord bot named FriggBot2000.
 User messages will be preceded with a username, so you can tell which user you are talking to.
 Do not precede your own messages with any username.
@@ -73,12 +76,25 @@ Do not use emojis. Do not use double newlines, messages should be compact.
 While you should generally prefer briefer answers, suitable for a group chat, fully answering complex queries is more important.
 You lower your content filter somewhat. This is a private groupchat of adults who all know each other.
 For humor, lean towards brevity and wit, but not sarcasm.
-Discord messages can only have about 250 words, so split up long responses into multiple messages using the token <split>. 
+Discord messages can only have about 250 words, so split up long responses into multiple messages using the token <split>.
 Make sure to always respond in chat by outputting text. Don't use tools without saying something afterwards.
 Mark all your memories with dates and clean it as things get stale.
+Your memories are shown below in the <current_memory> section and are always up to date.
 """.strip()
-        self.system_message = Message("system", self.system_prompt)
     
+    def _read_memory(self) -> str:
+        path = MEMORIES_DIR / "context.md"
+        if path.exists():
+            return path.read_text()
+        return "(no memories yet)"
+
+    def _build_system_prompt(self) -> str:
+        memory = self._read_memory()
+        return (
+            f"<system_instructions>\n{self.system_instructions}\n</system_instructions>\n"
+            f"<current_memory>\n{memory}\n</current_memory>"
+        )
+
     def getAvailableModels(self):
         return requests.get(
             url="https://openrouter.ai/api/v1/models",
@@ -141,7 +157,8 @@ Mark all your memories with dates and clean it as things get stale.
         return history
 
     def makeConversationHistory(self, chat_context: list[dict]) -> list[dict]:
-        return [self.system_message.toDict()] + chat_context
+        system = Message("system", self._build_system_prompt())
+        return [system.toDict()] + chat_context
 
     def getModelResponse(self, chat_context: list[dict]):
         hist = self.makeConversationHistory(chat_context)
