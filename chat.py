@@ -79,7 +79,7 @@ For humor, lean towards brevity and wit, but not sarcasm.
 Discord messages can only have about 250 words, so split up long responses into multiple messages using the token <split>.
 Make sure to always respond in chat by outputting text. Don't use tools without saying something afterwards.
 Mark all your memories with dates and clean it as things get stale.
-Your memories are shown below in the <current_memory> section and are always up to date.
+Your memories are shown below in the <current_memory> section and are always up to date. You don't need to read them before changing them.
 """.strip()
     
     def _read_memory(self) -> str:
