@@ -102,7 +102,14 @@ class Frig:
                 headers = { "Authorization":self.token },
                 files = files
             )
-            if not resp.ok:
+            if resp.ok:
+                self.log('info', 'message_sent', "Message sent", {
+                    'content_preview': str(msg)[:500],
+                    'content_length': len(str(msg)),
+                    'is_reply': reply_msg_id is not None,
+                    'has_files': files is not None,
+                })
+            else:
                 self.log('error', 'send_failed', "Discord send failed", {
                     'status_code': resp.status_code,
                     'response': resp.text[:500],
