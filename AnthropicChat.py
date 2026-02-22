@@ -48,6 +48,8 @@ class AnthropicChatAssistant(ChatAssistant):
         hist = self.makeConversationHistory(chat_context)
         self.log('info', 'chat_api_request', "Anthropic chat request", {'backend': 'anthropic', 'model': self.chat_model_name, 'message_count': len(hist)})
 
+        thinking_config = {"type": "enabled", "budget_tokens": 10_000}
+
         if self.memory_tool:
             runner = self.client.beta.messages.tool_runner(
                 model=self.chat_model_name,
@@ -55,6 +57,7 @@ class AnthropicChatAssistant(ChatAssistant):
                 system=self._build_system_prompt(),
                 messages=hist,
                 tools=self.tools,
+                thinking=thinking_config,
                 betas=["context-management-2025-06-27"],
                 stream=True,
             )
@@ -63,19 +66,22 @@ class AnthropicChatAssistant(ChatAssistant):
 
             def collect_all_turns():
                 all_text = []
+                all_thinking = []
                 last_msg = None
                 for stream in runner:
                     message = stream.get_final_message()
                     for block in message.content:
-                        if block.type == "text" and block.text.strip():
+                        if block.type == "thinking":
+                            all_thinking.append(block.thinking)
+                        elif block.type == "text" and block.text.strip():
                             all_text.append(block.text)
                     last_msg = message
-                return last_msg, all_text
+                return last_msg, all_text, all_thinking
 
             with ThreadPoolExecutor(max_workers=1) as executor:
                 future = executor.submit(collect_all_turns)
                 try:
-                    response, all_text_parts = future.result(timeout=TOOL_LOOP_TIMEOUT)
+                    response, all_text_parts, all_thinking_parts = future.result(timeout=TOOL_LOOP_TIMEOUT)
                 except FuturesTimeoutError:
                     elapsed = time.time() - start_time
                     self.log('error', 'chat_timeout', "Tool runner timed out", {'timeout': TOOL_LOOP_TIMEOUT, 'elapsed': round(elapsed, 2)})
@@ -89,9 +95,11 @@ class AnthropicChatAssistant(ChatAssistant):
                 system=self._build_system_prompt(),
                 messages=hist,
                 tools=self.tools if self.tools else anthropic.NOT_GIVEN,
+                thinking=thinking_config,
             ) as stream:
                 response = stream.get_final_message()
             all_text_parts = [block.text for block in response.content if block.type == "text"]
+            all_thinking_parts = [block.thinking for block in response.content if block.type == "thinking"]
 
         content_types = [block.type for block in response.content]
         has_web_search = any(t in ('server_tool_use', 'web_search_tool_result') for t in content_types)
@@ -103,6 +111,8 @@ class AnthropicChatAssistant(ChatAssistant):
             'has_text': bool(all_text_parts),
             'has_web_search': has_web_search,
         })
+        if all_thinking_parts:
+            self.log('info', 'chat_reasoning', "Model reasoning", {'backend': 'anthropic', 'reasoning': all_thinking_parts})
         if has_web_search:
             self.log('info', 'web_search_used', "Web search was used in response")
         return response, all_text_parts

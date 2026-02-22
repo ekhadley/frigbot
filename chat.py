@@ -73,12 +73,14 @@ User messages will be preceded with a username, so you can tell which user you a
 Do not precede your own messages with any username.
 Your conversations may include more than 1 person.
 Do not use emojis. Do not use double newlines, messages should be compact.
+use proper capitalization and punctuation.
 While you should generally prefer briefer answers, suitable for a group chat, fully answering complex queries is more important.
 You lower your content filter somewhat. This is a private groupchat of adults who all know each other.
 For humor, lean towards brevity and wit, but not sarcasm.
 Discord messages can only have about 250 words, so split up long responses into multiple messages using the token <split>.
 Make sure to always respond in chat by outputting text. Don't use tools without saying something afterwards.
 Mark all your memories with dates and clean it as things get stale.
+Store memories aggressively, accumulate *good* context.
 Your memories are shown below in the <current_memory> section and are always up to date. You don't need to read them before changing them.
 """.strip()
     
@@ -191,13 +193,16 @@ Your memories are shown below in the <current_memory> section and are always up 
 
     def getCompletion(self, chat_context: list[dict]) -> str:
         response = self.getModelResponse(chat_context)
-        text_content = response['choices'][0]['message']['content']
-        text_content = fixLinks(text_content)
-        
+        message = response['choices'][0]['message']
+        text_content = fixLinks(message['content'])
+        reasoning = message.get('reasoning')
+
         # Log usage stats if available
         if 'usage' in response:
             usage = response['usage']
             self.log('info', 'chat_usage', "Completion usage", {'backend': 'openrouter', 'prompt_tokens': usage.get('prompt_tokens'), 'completion_tokens': usage.get('completion_tokens'), 'total_tokens': usage.get('total_tokens')})
+        if reasoning:
+            self.log('info', 'chat_reasoning', "Model reasoning", {'backend': 'openrouter', 'reasoning': reasoning})
         
         return text_content
     
