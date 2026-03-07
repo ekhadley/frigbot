@@ -44,7 +44,7 @@ The project uses `uv` for dependency management. Virtual environment is in `.ven
 - Supports loading from saved state via `Frig.load_from_state_dict()`
 - Provides `log(level, event_type, message, data)` helper method for structured JSON logging
 - Passes log function to ChatAssistant and lolManager for unified logging
-- Uses both OpenRouter (via ChatAssistant) and direct OpenAI client for image generation
+- Image generation via standalone `generate_image()` function (always uses OpenRouter API key)
 
 **chat.py - LLM integration (`ChatAssistant`)**
 - Builds proper `user`/`assistant` role-annotated message history from Discord messages (bot messages get `assistant` role, others get `user` role with `"Author: content"` prefix)
@@ -52,8 +52,8 @@ The project uses `uv` for dependency management. Virtual environment is in `.ven
 - `resolveMentions()` resolves `<@ID>` Discord mentions to `@name`; `formatMessage()` adds author prefix
 - Calls OpenRouter API for chat completions with optional web search plugin (disabled by default)
 - Supports reasoning mode in chat completions
-- Supports both chat and image generation models via OpenRouter
 - Dynamic model switching at runtime
+- `generate_image()` standalone function for image generation via OpenRouter (not part of the class)
 - `fixLinks()` helper reformats markdown links for Discord compatibility
 - Receives log function from Frig for structured event logging
 
@@ -115,7 +115,6 @@ The project uses `uv` for dependency management. Virtual environment is in `.ven
 **Keys are stored in `.env`** (loaded by `python-dotenv` in `run.py`). See `.env.example` for the required variables:
 - `DISCORD_TOKEN` - Bot token
 - `OPENROUTER_API_KEY` - OpenRouter API key
-- `OPENAI_API_KEY` - OpenAI API key (for direct image generation)
 - `RIOT_API_KEY` - Riot API key
 - `TENOR_API_KEY` - Tenor API key
 - `ANTHROPIC_API_KEY` - Anthropic API key (for direct Claude model access)
