@@ -7,10 +7,9 @@ import json
 import requests
 import traceback
 import logging
-from openai import OpenAI
 
 from lolManager import lolManager
-from chat import ChatAssistant
+from chat import ChatAssistant, generate_image
 from AnthropicChat import AnthropicChatAssistant
 
 from utils import red, endc, yellow, bold, cyan, gray, green, aendc, rankColors, abold
@@ -38,16 +37,15 @@ class Frig:
 
         self.current_chat_model = "openai/gpt-5"
         self.current_image_model = "openai/gpt-image-1"
+        self.openrouter_key = os.environ['OPENROUTER_API_KEY']
         self.asst = ChatAssistant(
             chat_model_name = self.current_chat_model,
-            image_model_name = self.current_image_model,
             bot_id = self.id,
-            key = os.environ['OPENROUTER_API_KEY'],
+            key = self.openrouter_key,
             log_func = self.log,
             enable_web_search = False
         )
 
-        self.openai_client = OpenAI(api_key=os.environ['OPENAI_API_KEY'])
         self.rps_scores = {}
         self.lol = lolManager(os.environ['RIOT_API_KEY'], "/home/ek/wgmn/frigbot/data/summonerPUUIDs.json", self.log)
         self.commands = {  # a dict of associations between commands (prefaced with a '!') and the functions they call to generate responses.
@@ -217,7 +215,6 @@ class Frig:
             if is_anthropic:
                 self.asst = AnthropicChatAssistant(
                     chat_model_name=model_name,
-                    image_model_name=self.current_image_model,
                     bot_id=self.id,
                     key=os.environ['ANTHROPIC_API_KEY'],
                     log_func=self.log,
@@ -227,9 +224,8 @@ class Frig:
             else:
                 self.asst = ChatAssistant(
                     chat_model_name=model_name,
-                    image_model_name=self.current_image_model,
                     bot_id=self.id,
-                    key=os.environ['OPENROUTER_API_KEY'],
+                    key=self.openrouter_key,
                     log_func=self.log,
                     enable_web_search=False,
                 )
@@ -250,14 +246,16 @@ class Frig:
     def set_image_model(self, msg: str):
         msg_content = msg['content'] if isinstance(msg, dict) else msg
         model_name = msg_content.replace("!setimgmodel", "").strip()
-        if model_name == "openai/gpt-image-1" or self.asst.setImageModel(model_name):
-            self.current_image_model = model_name
-            self.log('info', 'model_changed', "Image model changed", {'model': model_name, 'model_type': 'image'})
-            self.save_state()
-            return f"image model set to {model_name}"
-        else:
-            self.log('warning', 'model_error', "Image model not found", {'model': model_name, 'model_type': 'image'})
-            return f"no image-capable model found for {model_name} [Available image models](<{self.asst.available_image_models_link}>)"
+        models = self.asst.getAvailableModels()
+        for model in models["data"]:
+            if model_name.strip() == model["id"].strip():
+                if "image" in model["architecture"]["output_modalities"]:
+                    self.current_image_model = model_name
+                    self.log('info', 'model_changed', "Image model changed", {'model': model_name, 'model_type': 'image'})
+                    self.save_state()
+                    return f"image model set to {model_name}"
+        self.log('warning', 'model_error', "Image model not found", {'model': model_name, 'model_type': 'image'})
+        return f"no image-capable model found for {model_name} [Available image models](<{self.asst.available_image_models_link}>)"
 
     def chat_resp(self, msgs):
         chat_context = self.asst.makeContext(msgs)
@@ -284,41 +282,15 @@ class Frig:
 
     def img_resp(self, msg):
         prompt = msg['content'].replace("!img", "").strip()
-        if self.current_image_model == "openai/gpt-image-1":
-            self.gpt_img_resp(msg)
+        resp = generate_image(prompt, self.current_image_model, self.openrouter_key, self.log)
+        message = resp["choices"][0]["message"]
+        if "images" in message:
+            for img in message["images"]:
+                img_b64 = img["image_url"]["url"].split(",")[1]
+                img_bytes = base64.b64decode(img_b64)
+                self.send("", files={"file": ("output.png", img_bytes)})
         else:
-            resp = self.asst.getImageGenResp(prompt)
-            message = resp["choices"][0]["message"]
-            if "images" in message:
-                for img in message["images"]:
-                    img_b64 = img["image_url"]["url"].split(",")[1]
-                    img_bytes = base64.b64decode(img_b64)
-                    self.send("", files={"file": ("output.png", img_bytes)})
-            else:
-                self.send(message['content'])
-
-    def gpt_img_resp(self, msg):
-        prompt = msg['content'].replace("!img", "").strip()
-        self.log('info', 'image_requested', "Image generation started", {'prompt': prompt[:100], 'model': 'gpt-image-1'})
-        self.send(f"image gen started: '{prompt if len(prompt) < 15 else prompt[:15]+'...'}'")
-        try:
-            resp = self.openai_client.images.generate(
-                    model="gpt-image-1",
-                    prompt=prompt,
-                    moderation="low",
-                    quality="high",
-                )
-        except Exception as e:
-            self.log('error', 'image_failed', "Image generation failed", {'prompt': prompt[:100], 'error': str(e), 'error_code': getattr(e, 'code', None)})
-            self.logger.exception("Image generation exception details")
-            if e.code == "moderation_blocked":
-                return "no porn!!!"
-            return f"error while generating: '{e.code}'"
-
-        img_b64 = resp.data[0].b64_json
-        img_bytes = base64.b64decode(img_b64)
-        self.log('info', 'image_generated', "Image generated successfully", {'prompt': prompt[:100]})
-        self.send("", files={"file": ("output.png", img_bytes)})
+            self.send(message['content'])
 
     def help_resp(self, msg):
         command_descriptions = {

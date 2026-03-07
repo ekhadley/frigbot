@@ -11,7 +11,6 @@ class AnthropicChatAssistant(ChatAssistant):
     def __init__(
         self,
         chat_model_name: str,
-        image_model_name: str,
         bot_id: str,
         key: str,
         log_func: callable = None,
@@ -21,7 +20,6 @@ class AnthropicChatAssistant(ChatAssistant):
     ):
         super().__init__(
             chat_model_name=chat_model_name,
-            image_model_name=image_model_name,
             bot_id=bot_id,
             key=key,
             log_func=log_func,

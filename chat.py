@@ -41,11 +41,37 @@ class Message:
             current_message = current_message.parent
         return history[::-1]
 
+def generate_image(prompt: str, model: str, api_key: str, log_func: callable):
+    log_func('info', 'image_api_request', "Image generation request", {'model': model, 'prompt': prompt[:100]})
+    response = requests.post(
+        url="https://openrouter.ai/api/v1/chat/completions",
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json"
+        },
+        json={
+            "model": model,
+            "messages": [{"role": "user", "content": prompt}],
+            "modalities": ["image", "text"]
+        }
+    )
+    response_content = response.json()
+    if not response.ok:
+        error_msg = response_content.get('error', {}).get('message', response.text)
+        log_func('error', 'image_api_error', "Image generation API call failed", {
+            'status_code': response.status_code,
+            'error': error_msg,
+            'metadata': response_content.get('error', {}).get('metadata'),
+        })
+        raise Exception(f"OpenRouter image API error {response.status_code}: {error_msg}")
+    log_func('info', 'image_api_response', "Image generation response", {'response': response_content})
+    return response_content
+
+
 class ChatAssistant:
     def __init__(
         self,
         chat_model_name: str,
-        image_model_name: str,
         bot_id: str,
         key: str,
         log_func: callable = None,
@@ -55,7 +81,6 @@ class ChatAssistant:
         self.logger = logging.getLogger('chat')
         self.log = log_func
         self.chat_model_name = chat_model_name
-        self.image_model_name = image_model_name
         self.key = key
         self.bot_id = str(bot_id)
 
@@ -112,16 +137,6 @@ Your memories are shown below in the <current_memory> section and are always up 
         self.log('warning', 'model_error', "Chat model not found", {'model': model_name, 'model_type': 'chat'})
         return False
 
-    def setImageModel(self, model_name: str) -> bool:
-        models = self.getAvailableModels()
-        for model in models["data"]:
-            if model_name.strip() == model["id"].strip():
-                if "image" in model["architecture"]["output_modalities"]:
-                    self.image_model_name = model["id"]
-                    self.log('info', 'model_changed', "Image model changed", {'model': model_name, 'model_type': 'image'})
-                    return True
-        self.log('warning', 'model_error', "Image model not found", {'model': model_name, 'model_type': 'image'})
-        return False
     
     def resolveMentions(self, msg):
         content = msg['content']
@@ -206,33 +221,3 @@ Your memories are shown below in the <current_memory> section and are always up 
         
         return text_content
     
-    def getImageGenResp(self, prompt: str):
-        self.log('info', 'image_api_request', "Image generation request", {'model': self.image_model_name, 'prompt': prompt[:100]})
-        response = requests.post(
-            url = "https://openrouter.ai/api/v1/chat/completions",
-            headers = {
-                "Authorization": f"Bearer {self.key}",
-                "Content-Type": "application/json"
-            },
-            json = {
-                "model": self.image_model_name,
-                "messages": [
-                    {
-                        "role": "user",
-                        "content": prompt
-                    }
-                ],
-                "modalities": ["image", "text"]
-            }
-        )
-        response_content = response.json()
-        if not response.ok:
-            error_msg = response_content.get('error', {}).get('message', response.text)
-            self.log('error', 'image_api_error', "Image generation API call failed", {
-                'status_code': response.status_code,
-                'error': error_msg,
-                'metadata': response_content.get('error', {}).get('metadata'),
-            })
-            raise Exception(f"OpenRouter image API error {response.status_code}: {error_msg}")
-        self.log('info', 'image_api_response', "Image generation response", {'response': response_content})
-        return response_content
