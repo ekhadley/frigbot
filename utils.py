@@ -18,24 +18,12 @@ bold = '\033[1m'
 underline = '\033[4m'
 endc = '\033[0m'
 
-ared = "[31m"
-#agreen = "[32m"
-alime = '[32m'
-ayellow = '[33m'
-ablue = '[34m'
-apurple = '[35m'
-acyan = '[36m'
-awhite = '[37m'
-agray = '[30m'
-
-abrown = '[33m'
-apink = "[38;5;206m"
-aorange = "[38;5;202m"
-agray = "[38;5;8m"
-abold = '[1m'
-aunderline = '[4m'
-aendc = '[0m'
-rankColors = {'IRON':agray, 'BRONZE':ared, 'SILVER':awhite, 'GOLD':ayellow, 'PLATINUM':acyan, 'EMERALD':alime, 'DIAMOND':ablue, 'MASTER':red, 'GRANDMASTER':apink, 'CHALLENGER':apurple}
+TIER_COLORS = {
+    'IRON': 0x7C7C7C, 'BRONZE': 0xCD7F32, 'SILVER': 0xC0C0C0,
+    'GOLD': 0xFFD700, 'PLATINUM': 0x00CED1, 'EMERALD': 0x50C878,
+    'DIAMOND': 0xB9F2FF, 'MASTER': 0x9B59B6, 'GRANDMASTER': 0xFF6B6B,
+    'CHALLENGER': 0xF0E68C,
+}
 
 def contains_scrambled(msg, key):
     state = 0
