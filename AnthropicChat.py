@@ -44,7 +44,7 @@ class AnthropicChatAssistant(ChatAssistant):
 
     def getModelResponse(self, chat_context: list[dict]):
         hist = self.makeConversationHistory(chat_context)
-        self.log('info', 'chat_api_request', "Anthropic chat request", {'backend': 'anthropic', 'model': self.chat_model_name, 'message_count': len(hist)})
+        self.log('info', 'chat_api_request', "Anthropic chat request", {'backend': 'anthropic', 'model': self.chat_model_name, 'message_count': len(hist), 'messages': hist})
 
         thinking_config = {"type": "enabled", "budget_tokens": 10_000}
 

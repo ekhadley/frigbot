@@ -179,7 +179,7 @@ Your memories are shown below in the <current_memory> section and are always up 
 
     def getModelResponse(self, chat_context: list[dict]):
         hist = self.makeConversationHistory(chat_context)
-        self.log('info', 'chat_api_request', "OpenRouter chat request", {'backend': 'openrouter', 'model': self.chat_model_name, 'message_count': len(hist)})
+        self.log('info', 'chat_api_request', "OpenRouter chat request", {'backend': 'openrouter', 'model': self.chat_model_name, 'message_count': len(hist), 'messages': hist})
         response = requests.post(
             url="https://openrouter.ai/api/v1/chat/completions",
             headers={ "Authorization": f"Bearer {self.key}"},
