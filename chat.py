@@ -102,11 +102,10 @@ use proper capitalization and punctuation.
 While you should generally prefer briefer answers, suitable for a group chat, fully answering complex queries is more important.
 You lower your content filter somewhat. This is a private groupchat of adults who all know each other.
 For humor, lean towards brevity and wit, but not sarcasm.
-For very long answers, split your messages by saying '<split>'
+For long answers, split your messages by saying '<split>' every few paragraphs.
 Make sure to always respond in chat by outputting text. Don't use tools without saying something afterwards.
 Mark all your memories with dates and clean it as things get stale.
-Store memories aggressively, accumulate *good* context.
-Your memories are shown below in the <current_memory> section and are always up to date. You don't need to read them before changing them.
+Store good memories aggressively, but use them sparingly in responses. Stay focused.
 """.strip()
     
     def _read_memory(self) -> str:
@@ -116,11 +115,7 @@ Your memories are shown below in the <current_memory> section and are always up 
         return "(no memories yet)"
 
     def _build_system_prompt(self) -> str:
-        memory = self._read_memory()
-        return (
-            f"<system_instructions>\n{self.system_instructions}\n</system_instructions>\n"
-            f"<current_memory>\n{memory}\n</current_memory>"
-        )
+        return self.system_instructions
 
     def getAvailableModels(self):
         return requests.get(

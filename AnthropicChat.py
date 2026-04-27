@@ -46,18 +46,25 @@ class AnthropicChatAssistant(ChatAssistant):
         hist = self.makeConversationHistory(chat_context)
         self.log('info', 'chat_api_request', "Anthropic chat request", {'backend': 'anthropic', 'model': self.chat_model_name, 'message_count': len(hist), 'messages': hist})
 
-        thinking_config = {"type": "enabled", "budget_tokens": 10_000}
+        is_adaptive = "4-7" in self.chat_model_name or "4.7" in self.chat_model_name
+        if is_adaptive:
+            thinking_config = {"type": "adaptive"}
+            extra_kwargs = {"output_config": {"effort": "medium"}}
+        else:
+            thinking_config = {"type": "enabled", "budget_tokens": 10_000}
+            extra_kwargs = {}
 
         if self.memory_tool:
             runner = self.client.beta.messages.tool_runner(
                 model=self.chat_model_name,
-                max_tokens=100_000,
+                max_tokens=64_000,
                 system=self._build_system_prompt(),
                 messages=hist,
                 tools=self.tools,
                 thinking=thinking_config,
                 betas=["context-management-2025-06-27"],
                 stream=True,
+                **extra_kwargs,
             )
             start_time = time.time()
             self.log('info', 'tool_runner_started', "Tool runner started", {'timeout': TOOL_LOOP_TIMEOUT})
@@ -89,11 +96,12 @@ class AnthropicChatAssistant(ChatAssistant):
         else:
             with self.client.messages.stream(
                 model=self.chat_model_name,
-                max_tokens=100_000,
+                max_tokens=64_000,
                 system=self._build_system_prompt(),
                 messages=hist,
                 tools=self.tools if self.tools else anthropic.NOT_GIVEN,
                 thinking=thinking_config,
+                **extra_kwargs,
             ) as stream:
                 response = stream.get_final_message()
             all_text_parts = [block.text for block in response.content if block.type == "text"]
