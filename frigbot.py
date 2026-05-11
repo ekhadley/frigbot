@@ -9,7 +9,9 @@ import logging
 
 import discord
 from discord import app_commands
+from discord.ext import tasks
 import requests
+from zoneinfo import ZoneInfo
 
 from lolManager import lolManager
 from chat import ChatAssistant, generate_image
@@ -39,6 +41,8 @@ class FrigBot:
         self.asst = None  # initialized in on_ready when bot ID is known
 
         self.rps_scores = {}
+        self.streaks_api_base = os.environ.get('STREAKS_API_BASE', '').rstrip('/')
+        self.streaks_bot_token = os.environ.get('STREAKS_BOT_TOKEN', '')
         self.lol = lolManager(
             os.environ['RIOT_API_KEY'],
             "/home/ek/wgmn/frigbot/data/summonerPUUIDs.json",
@@ -120,6 +124,9 @@ class FrigBot:
                     self.tree.copy_global_to(guild=guild)
                 await self.tree.sync(guild=guild)
                 self.log('info', 'commands_synced', "Slash commands synced", {'guild_id': self.guild_id})
+                if not self.wordle_reminder.is_running():
+                    self.wordle_reminder.start()
+                    self.log('info', 'reminder_started', "Wordle reminder loop started")
 
         @self.bot.event
         async def on_message(message: discord.Message):
@@ -318,6 +325,17 @@ class FrigBot:
                 f"uptime: {delta.days}d {delta.seconds // 3600}h {(delta.seconds % 3600) // 60}m {delta.seconds % 60}s"
             )
 
+        @self.tree.command(name="wordle_recap_now", description="Post yesterday's wordle streak recap right now (admin/test)")
+        async def wordle_recap_cmd(interaction: discord.Interaction):
+            await interaction.response.defer(ephemeral=True)
+            try:
+                posted = await self._post_wordle_recap()
+            except Exception as e:
+                self.log('error', 'wordle_recap_failed', "Wordle recap failed", {'error': str(e)})
+                await interaction.followup.send(f"recap failed: {e}", ephemeral=True)
+                return
+            await interaction.followup.send("posted." if posted else "no solvers yesterday, stayed silent.", ephemeral=True)
+
         @self.tree.command(name="poem", description="The poem")
         async def poem_cmd(interaction: discord.Interaction):
             lines = [
@@ -444,6 +462,56 @@ class FrigBot:
                 inline=False,
             )
         return embed
+
+    # --- Wordle streak reminder ---
+
+    def _fetch_yesterday(self) -> dict | None:
+        if not self.streaks_api_base or not self.streaks_bot_token or not self.guild_id:
+            return None
+        r = requests.get(
+            f"{self.streaks_api_base}/api/wordle/yesterday",
+            params={"guild_id": str(self.guild_id)},
+            headers={"X-Bot-Token": self.streaks_bot_token},
+            timeout=15,
+        )
+        r.raise_for_status()
+        return r.json()
+
+    async def _post_wordle_recap(self) -> bool:
+        data = await asyncio.to_thread(self._fetch_yesterday)
+        if not data:
+            self.log('warning', 'wordle_recap_skipped', "Streaks API not configured")
+            return False
+        solvers = data.get("solvers") or []
+        streak = data.get("streak") or 0
+        if not solvers or streak < 1:
+            self.log('info', 'wordle_recap_silent', "No solvers yesterday, no reminder", {'puzzle_date': data.get("puzzle_date")})
+            return False
+        target_channel_id = int(data.get("channel_id") or self.channel_id)
+        channel = self.bot.get_channel(target_channel_id) or await self.bot.fetch_channel(target_channel_id)
+        lines = [f"🔥 **{streak}-day Wordle streak alive!**", "Yesterday's solvers:"]
+        for s in solvers:
+            name = s.get("username") or s.get("user_id")
+            guesses = s.get("guesses")
+            bits = s.get("avg_bits")
+            bits_str = f"avg {bits:.2f} bits" if isinstance(bits, (int, float)) else "1 guess"
+            lines.append(f"• **{name}** — {guesses} guesses ({bits_str})")
+        lines.append("Today's Wordle is up — keep it going.")
+        await channel.send("\n".join(lines))
+        self.log('info', 'wordle_recap_posted', "Wordle recap posted", {'channel_id': target_channel_id, 'streak': streak, 'solvers': len(solvers)})
+        return True
+
+    @tasks.loop(time=datetime.time(hour=12, minute=0, tzinfo=ZoneInfo("America/New_York")))
+    async def wordle_reminder(self):
+        try:
+            await self._post_wordle_recap()
+        except Exception as e:
+            self.log('error', 'wordle_reminder_failed', "Wordle reminder loop iteration failed", {'error': str(e)})
+            self.logger.exception("Wordle reminder exception details")
+
+    @wordle_reminder.before_loop
+    async def _wordle_reminder_ready(self):
+        await self.bot.wait_until_ready()
 
     # --- State ---
 
