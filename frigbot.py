@@ -13,10 +13,33 @@ from discord.ext import tasks
 import requests
 from zoneinfo import ZoneInfo
 
+import streaks_db
 from lolManager import lolManager
 from chat import ChatAssistant, generate_image
 from AnthropicChat import AnthropicChatAssistant
 from utils import contains_scrambled, TIER_COLORS
+
+
+ET = ZoneInfo("America/New_York")
+
+
+async def _respond_launch_activity(interaction: discord.Interaction):
+    """Send a raw type-12 LAUNCH_ACTIVITY callback for this interaction."""
+    route = discord.http.Route(
+        "POST", "/interactions/{interaction_id}/{token}/callback",
+        interaction_id=interaction.id, token=interaction.token,
+    )
+    await interaction.client.http.request(route, json={"type": 12})
+    interaction.response._responded = True
+
+
+class LaunchView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+
+    @discord.ui.button(label="Launch Wordle", style=discord.ButtonStyle.primary, custom_id="launch_wordle")
+    async def launch(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await _respond_launch_activity(interaction)
 
 
 class FrigBot:
@@ -41,8 +64,8 @@ class FrigBot:
         self.asst = None  # initialized in on_ready when bot ID is known
 
         self.rps_scores = {}
-        self.streaks_api_base = os.environ.get('STREAKS_API_BASE', '').rstrip('/')
-        self.streaks_bot_token = os.environ.get('STREAKS_BOT_TOKEN', '')
+        self.client_id = os.environ['DISCORD_CLIENT_ID']
+        self._persistent_view_added = False
         self.lol = lolManager(
             os.environ['RIOT_API_KEY'],
             "/home/ek/wgmn/frigbot/data/summonerPUUIDs.json",
@@ -124,9 +147,36 @@ class FrigBot:
                     self.tree.copy_global_to(guild=guild)
                 await self.tree.sync(guild=guild)
                 self.log('info', 'commands_synced', "Slash commands synced", {'guild_id': self.guild_id})
+                if not self._persistent_view_added:
+                    self.bot.add_view(LaunchView())
+                    self._persistent_view_added = True
                 if not self.wordle_reminder.is_running():
                     self.wordle_reminder.start()
                     self.log('info', 'reminder_started', "Wordle reminder loop started")
+
+        @self.bot.event
+        async def on_interaction(interaction: discord.Interaction):
+            if interaction.type != discord.InteractionType.application_command:
+                return
+            data = interaction.data or {}
+            if data.get("type") != 4 or data.get("name") != "dailies":
+                return
+            today = datetime.datetime.now(ET).date().isoformat()
+            guild_id = str(interaction.guild_id) if interaction.guild_id else None
+            channel_id = str(interaction.channel_id) if interaction.channel_id else None
+            first = False
+            if guild_id and channel_id:
+                first = await asyncio.to_thread(
+                    streaks_db.record_launch_first_today, guild_id, channel_id, today
+                )
+            await _respond_launch_activity(interaction)
+            self.log('info', 'wordle_launched', "Wordle entry-point invoked", {
+                'guild_id': guild_id, 'channel_id': channel_id, 'first_today': first,
+            })
+            if first and guild_id and channel_id:
+                asyncio.create_task(self._send_first_launch_followup(
+                    int(channel_id), guild_id, today, interaction.user.mention,
+                ))
 
         @self.bot.event
         async def on_message(message: discord.Message):
@@ -465,30 +515,11 @@ class FrigBot:
 
     # --- Wordle streak reminder ---
 
-    def _fetch_yesterday(self) -> dict | None:
-        if not self.streaks_api_base or not self.streaks_bot_token or not self.guild_id:
-            return None
-        r = requests.get(
-            f"{self.streaks_api_base}/api/wordle/yesterday",
-            params={"guild_id": str(self.guild_id)},
-            headers={"X-Bot-Token": self.streaks_bot_token},
-            timeout=15,
-        )
-        r.raise_for_status()
-        return r.json()
-
-    async def _post_wordle_recap(self) -> bool:
-        data = await asyncio.to_thread(self._fetch_yesterday)
-        if not data:
-            self.log('warning', 'wordle_recap_skipped', "Streaks API not configured")
-            return False
-        solvers = data.get("solvers") or []
+    def _streak_block(self, data: dict) -> list[str]:
         streak = data.get("streak") or 0
+        solvers = data.get("solvers") or []
         if not solvers or streak < 1:
-            self.log('info', 'wordle_recap_silent', "No solvers yesterday, no reminder", {'puzzle_date': data.get("puzzle_date")})
-            return False
-        target_channel_id = int(data.get("channel_id") or self.channel_id)
-        channel = self.bot.get_channel(target_channel_id) or await self.bot.fetch_channel(target_channel_id)
+            return []
         lines = [f"🔥 **{streak}-day Wordle streak alive!**", "Yesterday's solvers:"]
         for s in solvers:
             name = s.get("username") or s.get("user_id")
@@ -496,8 +527,44 @@ class FrigBot:
             bits = s.get("avg_bits")
             bits_str = f"avg {bits:.2f} bits" if isinstance(bits, (int, float)) else "1 guess"
             lines.append(f"• **{name}** — {guesses} guesses ({bits_str})")
-        lines.append("Today's Wordle is up — keep it going.")
-        await channel.send("\n".join(lines))
+        return lines
+
+    async def _send_first_launch_followup(self, channel_id: int, guild_id: str, today: str, user_mention: str):
+        """First launch of the day: post launch announcement + streak recap with a play button."""
+        data = await asyncio.to_thread(streaks_db.yesterday_summary, guild_id)
+        lines = [f"🎯 **Wordle has been launched** by {user_mention}.", *self._streak_block(data)]
+        try:
+            channel = self.bot.get_channel(channel_id) or await self.bot.fetch_channel(channel_id)
+            await channel.send("\n".join(lines), view=LaunchView())
+            self.log('info', 'first_launch_followup_posted', "First-launch followup sent", {
+                'guild_id': guild_id, 'channel_id': channel_id, 'streak': data.get("streak") or 0,
+            })
+        except Exception as e:
+            self.log('error', 'first_launch_followup_failed', "First-launch followup failed", {'error': str(e)})
+
+    async def _post_wordle_recap(self) -> bool:
+        if not self.guild_id:
+            self.log('warning', 'wordle_recap_skipped', "guild_id not configured")
+            return False
+        guild_id = str(self.guild_id)
+        today = datetime.datetime.now(ET).date().isoformat()
+        if await asyncio.to_thread(streaks_db.launched_today, guild_id, today):
+            self.log('info', 'wordle_recap_silent', "Already launched today, no reminder", {'puzzle_date': today})
+            return False
+        data = await asyncio.to_thread(streaks_db.yesterday_summary, guild_id)
+        solvers = data.get("solvers") or []
+        streak = data.get("streak") or 0
+        today_solvers = data.get("today_solvers") or 0
+        if not solvers or streak < 1:
+            self.log('info', 'wordle_recap_silent', "No solvers yesterday, no reminder", {'puzzle_date': data.get("puzzle_date")})
+            return False
+        if today_solvers > 0:
+            self.log('info', 'wordle_recap_silent', "Today already has solvers, no reminder", {'today_solvers': today_solvers})
+            return False
+        target_channel_id = int(data.get("channel_id") or self.channel_id)
+        channel = self.bot.get_channel(target_channel_id) or await self.bot.fetch_channel(target_channel_id)
+        lines = [*self._streak_block(data), "Today's Wordle is up — keep it going."]
+        await channel.send("\n".join(lines), view=LaunchView())
         self.log('info', 'wordle_recap_posted', "Wordle recap posted", {'channel_id': target_channel_id, 'streak': streak, 'solvers': len(solvers)})
         return True
 
@@ -541,5 +608,5 @@ class FrigBot:
         self.current_image_model = saved.get("current_image_model", self.current_image_model)
         self.log('info', 'state_loaded', "State loaded", {'file': self.state_dict_path})
 
-    def run(self):
-        self.bot.run(os.environ['DISCORD_TOKEN'], log_handler=None)
+    async def start(self):
+        await self.bot.start(os.environ['DISCORD_TOKEN'])

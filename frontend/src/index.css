@@ -1,0 +1,622 @@
+* { box-sizing: border-box; }
+
+html, body, #root {
+  margin: 0;
+  height: 100%;
+  font-family: "gg sans", "Noto Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: #313338;
+  color: #dbdee1;
+}
+
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #949ba4;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  max-width: 1400px;
+  margin: 0 auto;
+  height: 100%;
+}
+
+.tabs {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+.tab {
+  background: #2b2d31;
+  color: #b5bac1;
+  border: none;
+  border-radius: 999px;
+  padding: 6px 18px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.tab.active { background: #5865f2; color: #fff; }
+
+.game-area {
+  display: grid;
+  grid-template-columns: 280px 1fr 280px;
+  align-items: center;
+  gap: 16px;
+  flex: 1;
+  min-height: 0;
+}
+
+.board {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.puzzle-meta {
+  font-size: 12px;
+  color: #949ba4;
+}
+.puzzle-meta a { color: #00a8fc; text-decoration: none; }
+.puzzle-meta a:hover { text-decoration: underline; }
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  max-width: calc((100dvh - 180px) * 1.4);
+  width: 100%;
+  margin: 0 auto;
+}
+
+.tile {
+  aspect-ratio: 1.4 / 1;
+  border: none;
+  border-radius: 18px;
+  background: #2b2d31;
+  color: #f2f3f5;
+  font-weight: 700;
+  font-size: 18px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.1s, transform 0.05s;
+}
+
+.tile.selected { background: #4e5058; color: #fff; }
+.tile:disabled { cursor: default; opacity: 1; }
+.tile.wiggle { animation: wiggle 0.45s ease-in-out; }
+.tile.bounce { animation: bounceUp 0.4s ease-out both; }
+
+.solved-row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  border-radius: 18px;
+  text-align: center;
+  color: #1e1f22;
+  animation: popIn 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.solved-title { font-size: 18px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; }
+.solved-members { font-size: 18px; margin-top: 4px; }
+
+.flyers { position: fixed; inset: 0; pointer-events: none; z-index: 10; }
+.flyer {
+  position: fixed;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 18px;
+  color: #1e1f22;
+  font-weight: 700;
+  font-size: 18px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  transition:
+    left 1s cubic-bezier(0.65, 0, 0.35, 1),
+    top 1s cubic-bezier(0.65, 0, 0.35, 1),
+    width 1s cubic-bezier(0.65, 0, 0.35, 1),
+    height 1s cubic-bezier(0.65, 0, 0.35, 1),
+    border-radius 1s cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+@keyframes wiggle {
+  0%, 100% { transform: translateX(0); }
+  15% { transform: translateX(-6px); }
+  30% { transform: translateX(6px); }
+  45% { transform: translateX(-5px); }
+  60% { transform: translateX(5px); }
+  75% { transform: translateX(-3px); }
+  90% { transform: translateX(3px); }
+}
+
+@keyframes bounceUp {
+  0%, 100% { transform: translateY(0); }
+  40% { transform: translateY(-22px); }
+}
+
+@keyframes popIn {
+  0% { opacity: 0; transform: scale(0.6); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+.mistakes {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #949ba4;
+}
+
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #4e5058;
+  display: inline-block;
+}
+.dot.used { background: #dbdee1; }
+
+.hint {
+  text-align: center;
+  color: #faa81a;
+  font-size: 13px;
+}
+
+.controls {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+
+button {
+  border: 1px solid transparent;
+  background: #4e5058;
+  color: #f2f3f5;
+  border-radius: 999px;
+  padding: 8px 18px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+button:disabled { opacity: 0.4; cursor: default; }
+button.primary { background: #5865f2; color: #fff; border-color: #5865f2; }
+
+.end {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+.end-title { font-weight: 800; font-size: 18px; color: #f2f3f5; }
+.end-summary { font-size: 13px; color: #b5bac1; text-align: center; font-variant-numeric: tabular-nums; }
+
+.spectators {
+  overflow-y: auto;
+}
+
+.spec {
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #3f4147;
+}
+.spec-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.spec-head img { width: 24px; height: 24px; border-radius: 50%; }
+.spec-head .name { font-size: 13px; font-weight: 600; color: #f2f3f5; }
+.spec-head .badge {
+  margin-left: auto;
+  font-size: 10px;
+  background: #5865f2;
+  color: #fff;
+  padding: 2px 6px;
+  border-radius: 999px;
+}
+
+.spec-attempts { display: flex; flex-direction: column; gap: 3px; margin-bottom: 5px; }
+.spec-attempts .row { display: flex; gap: 3px; }
+.pip { width: 14px; height: 14px; border-radius: 3px; display: inline-block; }
+
+.spec-mistakes { display: flex; gap: 4px; }
+
+/* Wordle */
+.wordle-board { align-items: center; position: relative; }
+
+.wordle-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 330px;
+  gap: 8px;
+}
+
+.settings { position: relative; }
+.settings-btn {
+  background: transparent;
+  border: none;
+  padding: 4px;
+  color: #b5bac1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 6px;
+}
+.settings-btn svg { width: 18px; height: 18px; display: block; }
+
+.settings-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  background: #1e1f22;
+  border: 1px solid #3f4147;
+  border-radius: 8px;
+  padding: 12px;
+  min-width: 240px;
+  z-index: 20;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+.settings-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: #949ba4;
+  margin-bottom: 10px;
+}
+.settings-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+}
+.settings-label { flex: 1; min-width: 0; }
+.settings-name { font-size: 14px; font-weight: 600; color: #f2f3f5; }
+.settings-desc { font-size: 12px; color: #949ba4; margin-top: 2px; line-height: 1.3; }
+
+.settings-toggle {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 36px;
+  height: 20px;
+  border-radius: 999px;
+  background: #4e5058;
+  position: relative;
+  cursor: pointer;
+  flex: 0 0 auto;
+  transition: background 0.15s;
+}
+.settings-toggle::before {
+  content: "";
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #f2f3f5;
+  top: 2px;
+  left: 2px;
+  transition: left 0.15s;
+}
+.settings-toggle:checked { background: #5865f2; }
+.settings-toggle:checked::before { left: 18px; }
+.wordle-grid {
+  display: grid;
+  grid-template-rows: repeat(6, 1fr);
+  gap: 5px;
+  max-width: min(330px, calc((100dvh - 280px) * 5 / 6));
+  width: 100%;
+  margin: 0 auto;
+  container-type: inline-size;
+}
+.wordle-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; position: relative; }
+.wordle-row.shake { animation: shake 0.6s; }
+.wordle-annotation {
+  position: absolute;
+  left: calc(100% + 12px);
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 12px;
+  color: #b5bac1;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+.wordle-cell {
+  aspect-ratio: 1 / 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #3a3a3c;
+  font-family: "Libre Franklin", "gg sans", -apple-system, BlinkMacSystemFont, sans-serif;
+  font-weight: 800;
+  font-size: clamp(14px, 8.5cqw, 28px);
+  text-transform: uppercase;
+  color: #f2f3f5;
+  user-select: none;
+  transition: border-color 100ms ease, transform 100ms ease;
+}
+.wordle-cell.filled {
+  border-color: #565758;
+  animation: wordle-pop 120ms ease;
+}
+.wordle-cell.revealed { border: none; color: #fff; }
+.wordle-cell.revealing { animation: wordle-flip 676ms ease forwards; }
+.wordle-cell.bouncing { animation: wordle-bounce 1000ms ease; }
+
+@keyframes wordle-bounce {
+  0% { transform: translateY(0); }
+  20% { transform: translateY(-22px); }
+  40% { transform: translateY(0); }
+  55% { transform: translateY(-10px); }
+  70% { transform: translateY(0); }
+  85% { transform: translateY(-3px); }
+  100% { transform: translateY(0); }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(6px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(4px); }
+}
+
+@keyframes wordle-pop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+  100% { transform: scale(1); }
+}
+
+@keyframes wordle-flip {
+  0% { transform: rotateX(0); border-color: #565758; background: transparent; color: #f2f3f5; }
+  50% { transform: rotateX(-90deg); border-color: #565758; background: transparent; color: #f2f3f5; }
+  50.01% { transform: rotateX(-90deg); border-color: var(--final-bg); background: var(--final-bg); color: #fff; }
+  100% { transform: rotateX(0); border-color: var(--final-bg); background: var(--final-bg); color: #fff; }
+}
+
+.wordle-toast {
+  position: absolute;
+  top: 28px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #f2f3f5;
+  color: #1a1a1b;
+  padding: 8px 14px;
+  border-radius: 4px;
+  font-weight: 700;
+  font-size: 13px;
+  pointer-events: none;
+  z-index: 10;
+  white-space: nowrap;
+  animation: wordle-toast-in 170ms ease;
+}
+@keyframes wordle-toast-in {
+  from { opacity: 0; transform: translate(-50%, -6px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+.keyboard { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
+.kb-row { display: flex; justify-content: center; gap: 5px; }
+.key-spacer { display: none; }
+.key {
+  width: min(7dvh, 8.5vw, 42px);
+  aspect-ratio: 1 / 1;
+  min-width: 0;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: #818384;
+  color: #f2f3f5;
+  font-family: "Libre Franklin", "gg sans", -apple-system, BlinkMacSystemFont, sans-serif;
+  font-weight: 700;
+  font-size: clamp(11px, 2.6dvh, 18px);
+  cursor: pointer;
+  text-transform: uppercase;
+  -webkit-tap-highlight-color: transparent;
+}
+.key:focus { outline: none; }
+.key.wide {
+  width: calc(min(7dvh, 8.5vw, 42px) * 1.4);
+  aspect-ratio: 1.4 / 1;
+  font-size: clamp(9px, 1.9dvh, 14px);
+}
+.key.key-back { display: inline-flex; align-items: center; justify-content: center; }
+.key.key-back svg { width: 60%; height: 60%; display: block; }
+@media (hover: hover) {
+  .key:hover { filter: brightness(1.15); }
+  .tab:hover { background: #3f4147; color: #f2f3f5; }
+  .tile:hover:not(:disabled) { background: #3f4147; }
+  button:hover:not(:disabled) { background: #6d6f78; }
+  button.primary:hover:not(:disabled) { background: #4752c4; }
+  .settings-btn:hover { background: #3f4147; color: #f2f3f5; }
+}
+
+.wordle-mini { display: flex; flex-direction: column; gap: 2px; }
+.wordle-mini-row { display: flex; gap: 2px; }
+.wordle-mini .pip { width: 12px; height: 12px; border-radius: 2px; }
+
+.spec-board { display: flex; flex-direction: column; gap: 3px; }
+.spec-board-row {
+  display: grid;
+  grid-template-columns: repeat(5, 22px);
+  gap: 3px;
+  position: relative;
+  align-items: center;
+}
+.spec-board-cell {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #3a3a3c;
+  border-radius: 2px;
+  font-family: "Libre Franklin", "gg sans", -apple-system, BlinkMacSystemFont, sans-serif;
+  font-weight: 800;
+  font-size: 13px;
+  text-transform: uppercase;
+  color: #f2f3f5;
+}
+.spec-board-annotation {
+  position: absolute;
+  left: calc(100% + 8px);
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 10px;
+  color: #b5bac1;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
+/* Mobile / narrow viewports */
+@media (max-width: 720px) {
+  .app {
+    padding: 6px;
+    gap: 6px;
+  }
+
+  .tabs { gap: 6px; }
+  .tab { padding: 4px 12px; font-size: 13px; }
+
+  .game-area {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .board {
+    flex: 0 0 auto;
+    min-height: 0;
+    align-items: center;
+    width: 100%;
+    gap: 6px;
+  }
+
+  .spectators {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    gap: 10px;
+    flex: 0 0 auto;
+    padding-bottom: 4px;
+    scrollbar-width: thin;
+  }
+  .spectators:empty { display: none; }
+  .spec {
+    flex: 0 0 auto;
+    margin-bottom: 0;
+    padding: 6px 10px 6px 0;
+    border-bottom: none;
+    border-right: 1px solid #3f4147;
+    min-width: 0;
+  }
+  .spec:last-child { border-right: none; padding-right: 0; }
+  .spec-head { margin-bottom: 4px; gap: 6px; }
+  .spec-head img { width: 20px; height: 20px; }
+  .spec-head .name {
+    font-size: 12px;
+    max-width: 100px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .spec-head .badge { font-size: 9px; padding: 1px 5px; }
+  .wordle-mini .pip { width: clamp(5px, 1.1dvh, 10px); height: clamp(5px, 1.1dvh, 10px); }
+  .pip { width: 11px; height: 11px; }
+  .spec-board-row { grid-template-columns: repeat(5, clamp(14px, 2.4dvh, 20px)); gap: 2px; }
+  .spec-board-cell {
+    width: clamp(14px, 2.4dvh, 20px);
+    height: clamp(14px, 2.4dvh, 20px);
+    font-size: clamp(9px, 1.6dvh, 12px);
+  }
+  .spec-board-annotation { display: none; }
+
+  /* Connections board */
+  .grid { gap: clamp(4px, 0.8dvh, 8px); max-width: min(100%, calc((100dvh - 190px) * 3 / 2)); }
+  .tile {
+    border-radius: clamp(8px, 1.6dvh, 14px);
+    font-size: clamp(10px, 2.0dvh, 16px);
+    letter-spacing: 0;
+    padding: 0 4px;
+    aspect-ratio: 1.5 / 1;
+    word-break: break-word;
+  }
+  .solved-row { border-radius: clamp(8px, 1.6dvh, 14px); padding: 6px 8px; }
+  .solved-title { font-size: clamp(11px, 1.8dvh, 15px); }
+  .solved-members { font-size: clamp(11px, 1.8dvh, 14px); margin-top: 2px; }
+  .mistakes { font-size: 12px; justify-content: center; }
+  .controls { flex-wrap: wrap; gap: 6px; }
+  .controls button { padding: clamp(5px, 1.0dvh, 8px) 14px; font-size: clamp(12px, 1.7dvh, 14px); }
+
+  /* Wordle board */
+  .wordle-header {
+    max-width: 100%;
+    padding: 0 4px;
+  }
+  .puzzle-meta { font-size: 11px; }
+  .wordle-grid {
+    max-width: min(82vw, 320px, calc((100dvh - 340px) * 5 / 6));
+    gap: clamp(3px, 0.6dvh, 5px);
+  }
+  .wordle-row { gap: clamp(3px, 0.6dvh, 5px); }
+  .wordle-cell { font-size: clamp(14px, 3.4dvh, 24px); border-width: 2px; }
+  .wordle-annotation { display: none; }
+
+  .board.wordle-board {
+    flex: 1;
+    min-height: 0;
+  }
+  .keyboard {
+    margin-top: auto;
+    gap: clamp(3px, 0.6dvh, 6px);
+    width: 100%;
+    max-width: 460px;
+    align-self: center;
+  }
+  .kb-row { gap: clamp(3px, 0.6dvh, 5px); width: 100%; }
+  .key {
+    flex: 1;
+    width: auto;
+    max-width: 44px;
+    aspect-ratio: 1 / 2;
+    font-size: clamp(15px, 4.5vw, 20px);
+  }
+  .key.wide {
+    flex: 1.4;
+    width: auto;
+    max-width: calc(44px * 1.4);
+    aspect-ratio: 1.4 / 2;
+    font-size: clamp(12px, 3.2vw, 16px);
+  }
+  .key.key-back svg { width: 50%; height: 50%; }
+  .key-spacer {
+    display: block;
+    flex: 0.5;
+    min-width: 0;
+    max-width: 22px;
+    pointer-events: none;
+  }
+
+  .end { margin-top: auto; }
+  .end-title { font-size: clamp(13px, 2.0dvh, 16px); }
+  .end-summary { font-size: clamp(10px, 1.6dvh, 13px); }
+}
