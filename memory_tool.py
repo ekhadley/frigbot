@@ -1,6 +1,8 @@
 import os
+import json
 import shutil
 import functools
+from datetime import datetime, timezone
 from pathlib import Path
 from anthropic.lib.tools import BetaAbstractMemoryTool
 from anthropic.types.beta import (
@@ -13,6 +15,7 @@ from anthropic.types.beta import (
 )
 
 MEMORIES_DIR = Path(__file__).parent / "memories"
+MEMORY_CHANGES_LOG = Path(__file__).parent / "logs" / "memory_changes.jsonl"
 
 
 def _command_data(command):
@@ -40,7 +43,23 @@ class LocalMemoryTool(BetaAbstractMemoryTool):
     def __init__(self, log_func=None):
         super().__init__()
         MEMORIES_DIR.mkdir(exist_ok=True)
+        MEMORY_CHANGES_LOG.parent.mkdir(exist_ok=True)
         self.log = log_func or (lambda *a, **kw: None)
+        self.current_context = None
+
+    def set_context(self, messages):
+        """Record the chat context that preceded the upcoming tool_runner turn."""
+        self.current_context = messages
+
+    def _record_change(self, op: str, delta: dict):
+        entry = {
+            'timestamp': datetime.now(timezone.utc).isoformat(),
+            'op': op,
+            'delta': delta,
+            'context': self.current_context,
+        }
+        with open(MEMORY_CHANGES_LOG, 'a') as f:
+            f.write(json.dumps(entry) + '\n')
 
     def _resolve(self, virtual_path: str) -> Path:
         """Resolve a /memories/... virtual path to a real filesystem path, preventing traversal."""
@@ -99,6 +118,7 @@ class LocalMemoryTool(BetaAbstractMemoryTool):
             raise FileExistsError(f"File already exists: {command.path}")
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(command.file_text)
+        self._record_change('create', {'path': command.path, 'new_content': command.file_text})
         return f"Created {command.path}"
 
     @_logged
@@ -113,6 +133,12 @@ class LocalMemoryTool(BetaAbstractMemoryTool):
         if count > 1:
             raise ValueError(f"old_str found {count} times in {command.path}, must be unique")
         path.write_text(content.replace(command.old_str, command.new_str, 1))
+        self._record_change('str_replace', {
+            'path': command.path,
+            'old_str': command.old_str,
+            'new_str': command.new_str,
+            'content_before': content,
+        })
         return f"Replaced in {command.path}"
 
     @_logged
@@ -120,12 +146,19 @@ class LocalMemoryTool(BetaAbstractMemoryTool):
         path = self._resolve(command.path)
         if not path.exists():
             raise FileNotFoundError(f"File not found: {command.path}")
-        lines = path.read_text().splitlines(keepends=True)
+        content_before = path.read_text()
+        lines = content_before.splitlines(keepends=True)
         insert_pos = command.insert_line
         # Ensure the inserted text ends with a newline
         text = command.insert_text if command.insert_text.endswith("\n") else command.insert_text + "\n"
         lines.insert(insert_pos, text)
         path.write_text("".join(lines))
+        self._record_change('insert', {
+            'path': command.path,
+            'insert_line': command.insert_line,
+            'insert_text': command.insert_text,
+            'content_before': content_before,
+        })
         return f"Inserted at line {insert_pos} in {command.path}"
 
     @_logged
@@ -134,9 +167,14 @@ class LocalMemoryTool(BetaAbstractMemoryTool):
         if not path.exists():
             raise FileNotFoundError(f"Path not found: {command.path}")
         if path.is_dir():
+            content_before = sorted(str(p.relative_to(MEMORIES_DIR)) for p in path.rglob('*'))
             shutil.rmtree(path)
+            delta = {'path': command.path, 'kind': 'dir', 'entries_before': content_before}
         else:
+            content_before = path.read_text()
             path.unlink()
+            delta = {'path': command.path, 'kind': 'file', 'content_before': content_before}
+        self._record_change('delete', delta)
         return f"Deleted {command.path}"
 
     @_logged
@@ -149,4 +187,5 @@ class LocalMemoryTool(BetaAbstractMemoryTool):
             raise FileExistsError(f"Destination already exists: {command.new_path}")
         new.parent.mkdir(parents=True, exist_ok=True)
         old.rename(new)
+        self._record_change('rename', {'old_path': command.old_path, 'new_path': command.new_path})
         return f"Renamed {command.old_path} -> {command.new_path}"

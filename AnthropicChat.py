@@ -55,6 +55,7 @@ class AnthropicChatAssistant(ChatAssistant):
             extra_kwargs = {}
 
         if self.memory_tool:
+            self.memory_tool.set_context(hist)
             runner = self.client.beta.messages.tool_runner(
                 model=self.chat_model_name,
                 max_tokens=64_000,
@@ -116,6 +117,8 @@ class AnthropicChatAssistant(ChatAssistant):
             'content_block_types': content_types,
             'has_text': bool(all_text_parts),
             'has_web_search': has_web_search,
+            'messages': hist,
+            'text': all_text_parts,
         })
         if all_thinking_parts:
             self.log('info', 'chat_reasoning', "Model reasoning", {'backend': 'anthropic', 'reasoning': all_thinking_parts})
@@ -125,7 +128,7 @@ class AnthropicChatAssistant(ChatAssistant):
 
     def getCompletion(self, chat_context: list[dict]) -> str:
         response, text_parts = self.getModelResponse(chat_context)
-        text_content = "\n".join(text_parts)
+        text_content = "".join(text_parts)
 
         if not text_content.strip():
             self.log('warning', 'chat_empty_response', "Response contained no text content", {
