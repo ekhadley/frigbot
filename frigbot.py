@@ -210,7 +210,11 @@ class FrigBot:
                         self.log('error', 'chat_failed', "Chat completion failed", {'error': str(e)})
                         self.logger.exception("Chat completion exception details")
                         status = getattr(e, 'status_code', None) or type(e).__name__
-                        await message.reply(f"error: {status}")
+                        detail = str(e).strip()
+                        reply = f"error: {status}"
+                        if detail and detail != str(status):
+                            reply += f" — {detail[:300]}"
+                        await message.reply(reply)
                         return
 
                 parts = completion.replace("\n\n", "\n").strip().split("<split>")
