@@ -7,6 +7,9 @@ from pathlib import Path
 
 MEMORIES_DIR = Path(__file__).parent / "memories"
 
+MAX_TOKENS = 64_000
+REQUEST_TIMEOUT = 120  # seconds
+
 def fixLinks(text: str) -> str:
     # return re.sub(r'\[(.*?)\]\((.*?)\)', r'[\1](<\2>)', text)
     for match in re.findall(r'\[(.*?)\]\((.*?)\)', text):
@@ -182,10 +185,12 @@ Store good memories aggressively, but use them sparingly in responses. Stay focu
                 "model": self.chat_model_name,
                 "plugins": self.plugins,
                 "messages": hist,
+                "max_tokens": MAX_TOKENS,
                 "reasoning": {
-                    "enabled": True
+                    "effort": "high"
                 }
-            })
+            }),
+            timeout=REQUEST_TIMEOUT,
         )
         response_content = response.json()
         if not response.ok:
@@ -204,7 +209,11 @@ Store good memories aggressively, but use them sparingly in responses. Stay focu
     def getCompletion(self, chat_context: list[dict]) -> str:
         response = self.getModelResponse(chat_context)
         message = response['choices'][0]['message']
-        text_content = fixLinks(message['content'])
+        content = message.get('content')
+        if not content or not content.strip():
+            self.log('warning', 'chat_empty_response', "Response contained no text content", {'backend': 'openrouter', 'finish_reason': response['choices'][0].get('finish_reason')})
+            content = "(I processed your request but generated no text response)"
+        text_content = fixLinks(content)
         reasoning = message.get('reasoning')
 
         # Log usage stats if available

@@ -49,9 +49,9 @@ class AnthropicChatAssistant(ChatAssistant):
         is_adaptive = "4-7" in self.chat_model_name or "4.7" in self.chat_model_name
         if is_adaptive:
             thinking_config = {"type": "adaptive"}
-            extra_kwargs = {"output_config": {"effort": "medium"}}
+            extra_kwargs = {"output_config": {"effort": "high"}}
         else:
-            thinking_config = {"type": "enabled", "budget_tokens": 10_000}
+            thinking_config = {"type": "enabled", "budget_tokens": 32_000}
             extra_kwargs = {}
 
         if self.memory_tool:
@@ -64,7 +64,6 @@ class AnthropicChatAssistant(ChatAssistant):
                 tools=self.tools,
                 thinking=thinking_config,
                 betas=["context-management-2025-06-27"],
-                stream=True,
                 **extra_kwargs,
             )
             start_time = time.time()
@@ -74,8 +73,7 @@ class AnthropicChatAssistant(ChatAssistant):
                 all_text = []
                 all_thinking = []
                 last_msg = None
-                for stream in runner:
-                    message = stream.get_final_message()
+                for message in runner:
                     for block in message.content:
                         if block.type == "thinking":
                             all_thinking.append(block.thinking)
@@ -95,16 +93,16 @@ class AnthropicChatAssistant(ChatAssistant):
             elapsed = time.time() - start_time
             self.log('info', 'tool_runner_done', "Tool runner completed", {'elapsed': round(elapsed, 2)})
         else:
-            with self.client.messages.stream(
+            response = self.client.messages.create(
                 model=self.chat_model_name,
                 max_tokens=64_000,
                 system=self._build_system_prompt(),
                 messages=hist,
                 tools=self.tools if self.tools else anthropic.NOT_GIVEN,
                 thinking=thinking_config,
+                timeout=TOOL_LOOP_TIMEOUT,
                 **extra_kwargs,
-            ) as stream:
-                response = stream.get_final_message()
+            )
             all_text_parts = [block.text for block in response.content if block.type == "text"]
             all_thinking_parts = [block.thinking for block in response.content if block.type == "thinking"]
 
