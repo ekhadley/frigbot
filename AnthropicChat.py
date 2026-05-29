@@ -51,14 +51,14 @@ class AnthropicChatAssistant(ChatAssistant):
             thinking_config = {"type": "adaptive"}
             extra_kwargs = {"output_config": {"effort": "high"}}
         else:
-            thinking_config = {"type": "enabled", "budget_tokens": 32_000}
+            thinking_config = {"type": "enabled", "budget_tokens": 12_000}
             extra_kwargs = {}
 
         if self.memory_tool:
             self.memory_tool.set_context(hist)
             runner = self.client.beta.messages.tool_runner(
                 model=self.chat_model_name,
-                max_tokens=64_000,
+                max_tokens=16_000,
                 system=self._build_system_prompt(),
                 messages=hist,
                 tools=self.tools,
@@ -95,7 +95,7 @@ class AnthropicChatAssistant(ChatAssistant):
         else:
             response = self.client.messages.create(
                 model=self.chat_model_name,
-                max_tokens=64_000,
+                max_tokens=16_000,
                 system=self._build_system_prompt(),
                 messages=hist,
                 tools=self.tools if self.tools else anthropic.NOT_GIVEN,
