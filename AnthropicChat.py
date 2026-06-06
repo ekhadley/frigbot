@@ -63,6 +63,7 @@ class AnthropicChatAssistant(ChatAssistant):
                 messages=hist,
                 tools=self.tools,
                 thinking=thinking_config,
+                cache_control={"type": "ephemeral"},  # auto-caches last cacheable block, moves forward each turn
                 betas=["context-management-2025-06-27"],
                 **extra_kwargs,
             )
@@ -100,6 +101,7 @@ class AnthropicChatAssistant(ChatAssistant):
                 messages=hist,
                 tools=self.tools if self.tools else anthropic.NOT_GIVEN,
                 thinking=thinking_config,
+                cache_control={"type": "ephemeral"},  # auto-caches last cacheable block
                 timeout=TOOL_LOOP_TIMEOUT,
                 **extra_kwargs,
             )
@@ -142,5 +144,7 @@ class AnthropicChatAssistant(ChatAssistant):
             'prompt_tokens': response.usage.input_tokens,
             'completion_tokens': response.usage.output_tokens,
             'total_tokens': response.usage.input_tokens + response.usage.output_tokens,
+            'cache_creation_tokens': response.usage.cache_creation_input_tokens,
+            'cache_read_tokens': response.usage.cache_read_input_tokens,
         })
         return text_content
