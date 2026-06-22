@@ -34,7 +34,7 @@ async def main():
 
     streaks_db.init_db()
 
-    frig = FrigBot(channel_id=channel_id, guild_id=guild_id, state_dict_path=state_dict_path)
+    frig = FrigBot(channel_id=channel_id, guild_id=guild_id, state_dict_path=state_dict_path, restrict_to_channel=args.test)
     frig.load_state()
 
     config = uvicorn.Config(fastapi_app, host="127.0.0.1", port=8001, log_level="info")

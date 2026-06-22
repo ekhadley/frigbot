@@ -45,10 +45,11 @@ class LaunchView(discord.ui.View):
 class FrigBot:
     OLD_BOT_ID = "352226045228875786"
 
-    def __init__(self, channel_id: int, guild_id: int | None = None, state_dict_path: str | None = None):
+    def __init__(self, channel_id: int, guild_id: int | None = None, state_dict_path: str | None = None, restrict_to_channel: bool = False):
         self.logger = logging.getLogger('frigbot')
         self.channel_id = channel_id
         self.guild_id = guild_id
+        self.restrict_to_channel = restrict_to_channel
         self.state_dict_path = state_dict_path
         self.start_time = datetime.datetime.now()
         self.max_message_length = 2000
@@ -180,7 +181,9 @@ class FrigBot:
 
         @self.bot.event
         async def on_message(message: discord.Message):
-            if message.author.bot or message.channel.id != self.channel_id:
+            if message.author.bot or message.guild is None or message.guild.id != self.guild_id:
+                return
+            if self.restrict_to_channel and message.channel.id != self.channel_id:
                 return
 
             self.log('info', 'new_message', "New message received", {
@@ -238,7 +241,10 @@ class FrigBot:
     def _register_commands(self):
         @self.tree.interaction_check
         async def check_channel(interaction: discord.Interaction) -> bool:
-            if interaction.channel_id != self.channel_id:
+            if interaction.guild_id != self.guild_id:
+                await interaction.response.send_message("Wrong server.", ephemeral=True)
+                return False
+            if self.restrict_to_channel and interaction.channel_id != self.channel_id:
                 await interaction.response.send_message("Wrong channel.", ephemeral=True)
                 return False
             return True
