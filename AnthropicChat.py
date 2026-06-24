@@ -6,6 +6,7 @@ from chat import ChatAssistant, fixLinks
 from memory_tool import LocalMemoryTool
 
 TOOL_LOOP_TIMEOUT = 120  # seconds
+CACHE_DIAGNOSTICS_BETA = "cache-diagnosis-2026-04-07"
 
 class AnthropicChatAssistant(ChatAssistant):
     def __init__(
@@ -33,6 +34,7 @@ class AnthropicChatAssistant(ChatAssistant):
         self.memory_tool = LocalMemoryTool(log_func=log_func) if enable_memory else None
         if self.memory_tool:
             self.tools.append(self.memory_tool)
+        self._prev_message_id = None  # last response id, for cache diagnostics
 
     def setChatModel(self, model_name: str) -> bool:
         self.chat_model_name = model_name
@@ -45,6 +47,7 @@ class AnthropicChatAssistant(ChatAssistant):
     def getModelResponse(self, chat_context: list[dict]):
         hist = self.makeConversationHistory(chat_context)
         self.log('info', 'chat_api_request', "Anthropic chat request", {'backend': 'anthropic', 'model': self.chat_model_name, 'message_count': len(hist), 'messages': hist})
+        sent_prev_message_id = self._prev_message_id  # captured before this call overwrites it
 
         is_adaptive = "4-7" in self.chat_model_name or "4.7" in self.chat_model_name
         if is_adaptive:
@@ -63,8 +66,9 @@ class AnthropicChatAssistant(ChatAssistant):
                 messages=hist,
                 tools=self.tools,
                 thinking=thinking_config,
-                cache_control={"type": "ephemeral"},  # auto-caches last cacheable block, moves forward each turn
-                betas=["context-management-2025-06-27"],
+                cache_control={"type": "ephemeral", "ttl": "1h"},  # auto-caches last cacheable block, moves forward each turn
+                diagnostics={"previous_message_id": self._prev_message_id},
+                betas=["context-management-2025-06-27", CACHE_DIAGNOSTICS_BETA],
                 **extra_kwargs,
             )
             start_time = time.time()
@@ -94,14 +98,16 @@ class AnthropicChatAssistant(ChatAssistant):
             elapsed = time.time() - start_time
             self.log('info', 'tool_runner_done', "Tool runner completed", {'elapsed': round(elapsed, 2)})
         else:
-            response = self.client.messages.create(
+            response = self.client.beta.messages.create(
                 model=self.chat_model_name,
                 max_tokens=16_000,
                 system=self._build_system_prompt(),
                 messages=hist,
                 tools=self.tools if self.tools else anthropic.NOT_GIVEN,
                 thinking=thinking_config,
-                cache_control={"type": "ephemeral"},  # auto-caches last cacheable block
+                cache_control={"type": "ephemeral", "ttl": "1h"},  # auto-caches last cacheable block
+                diagnostics={"previous_message_id": self._prev_message_id},
+                betas=[CACHE_DIAGNOSTICS_BETA],
                 timeout=TOOL_LOOP_TIMEOUT,
                 **extra_kwargs,
             )
@@ -124,10 +130,28 @@ class AnthropicChatAssistant(ChatAssistant):
             self.log('info', 'chat_reasoning', "Model reasoning", {'backend': 'anthropic', 'reasoning': all_thinking_parts})
         if has_web_search:
             self.log('info', 'web_search_used', "Web search was used in response")
-        return response, all_text_parts
+
+        diagnostics = response.diagnostics
+        cache_missed_input_tokens = None
+        if sent_prev_message_id is None:
+            cache_diagnostics_state = "first_turn"
+        elif diagnostics is None:
+            cache_diagnostics_state = "no_divergence"
+        elif diagnostics.cache_miss_reason is None:
+            cache_diagnostics_state = "pending"
+        else:
+            cache_diagnostics_state = diagnostics.cache_miss_reason.type
+            cache_missed_input_tokens = getattr(diagnostics.cache_miss_reason, 'cache_missed_input_tokens', None)
+        self._prev_message_id = response.id
+
+        cache_diagnostics = {
+            'cache_diagnostics_state': cache_diagnostics_state,
+            'cache_missed_input_tokens': cache_missed_input_tokens,
+        }
+        return response, all_text_parts, cache_diagnostics
 
     def getCompletion(self, chat_context: list[dict]) -> str:
-        response, text_parts = self.getModelResponse(chat_context)
+        response, text_parts, cache_diagnostics = self.getModelResponse(chat_context)
         text_content = "".join(text_parts)
 
         if not text_content.strip():
@@ -146,5 +170,6 @@ class AnthropicChatAssistant(ChatAssistant):
             'total_tokens': response.usage.input_tokens + response.usage.output_tokens,
             'cache_creation_tokens': response.usage.cache_creation_input_tokens,
             'cache_read_tokens': response.usage.cache_read_input_tokens,
+            **cache_diagnostics,
         })
         return text_content
