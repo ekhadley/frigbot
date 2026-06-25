@@ -40,7 +40,8 @@ export function WordleGame({ session }: { session: Session }) {
     words: game.guesses,
     done: game.done !== null,
   }
-  const players = useGameRoom("wordle", session.instanceId, session.user, payload)
+  const date = game?.puzzle.print_date ?? null
+  const players = useGameRoom("wordle", date, session.user, payload)
 
   useEffect(() => {
     if (!game) return

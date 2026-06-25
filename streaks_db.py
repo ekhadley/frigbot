@@ -1,3 +1,4 @@
+import json
 import sqlite3
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -40,6 +41,14 @@ def init_db():
               channel_id TEXT NOT NULL,
               updated_at TEXT NOT NULL
             );
+            CREATE TABLE IF NOT EXISTS boards (
+              game        TEXT NOT NULL,
+              puzzle_date TEXT NOT NULL,
+              user_id     TEXT NOT NULL,
+              payload     TEXT NOT NULL,
+              updated_at  TEXT NOT NULL,
+              PRIMARY KEY (game, puzzle_date, user_id)
+            );
             """
         )
 
@@ -52,6 +61,26 @@ def record_solve(guild_id: str, puzzle_date: str, user_id: str, username: str | 
             "VALUES (?, ?, ?, ?, ?, ?, ?)",
             (guild_id, puzzle_date, user_id, username, guesses, avg_bits, datetime.now(ET).isoformat()),
         )
+
+
+def save_board(game: str, puzzle_date: str, user_id: str, payload: dict) -> None:
+    with db_connect() as conn:
+        conn.execute(
+            "INSERT INTO boards (game, puzzle_date, user_id, payload, updated_at) "
+            "VALUES (?, ?, ?, ?, ?) "
+            "ON CONFLICT(game, puzzle_date, user_id) DO UPDATE SET "
+            "payload = excluded.payload, updated_at = excluded.updated_at",
+            (game, puzzle_date, user_id, json.dumps(payload), datetime.now(ET).isoformat()),
+        )
+
+
+def load_boards(game: str, puzzle_date: str) -> dict[str, dict]:
+    with db_connect() as conn:
+        rows = conn.execute(
+            "SELECT user_id, payload FROM boards WHERE game = ? AND puzzle_date = ?",
+            (game, puzzle_date),
+        ).fetchall()
+    return {row["user_id"]: json.loads(row["payload"]) for row in rows}
 
 
 def streak_length_through(guild_id: str, end_date: str) -> int:

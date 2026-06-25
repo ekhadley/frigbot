@@ -6,6 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 FrigBot is a Discord bot that provides chat completions via OpenRouter, image generation, League of Legends stats, and various utility commands. Built on discord.py with slash commands and event-driven message handling.
 
+**Deployment context:** FrigBot runs in a single Discord server with one text channel and ~4 users — effectively a group DM. It is not multi-tenant and will never be used in other servers. Design accordingly: there's no need for guild/server scoping, per-server isolation, or multi-guild concerns. Features can assume one shared global context for all users.
+
 ## Running the Bot
 
 **Start/check the systemd service:**

@@ -41,7 +41,8 @@ export function ConnectionsGame({ session }: { session: Session }) {
     mistakes: game.mistakes,
     done: game.done !== null,
   }
-  const players = useGameRoom("connections", session.instanceId, session.user, payload)
+  const date = game?.puzzle.date ?? null
+  const players = useGameRoom("connections", date, session.user, payload)
 
   useEffect(() => {
     if (!game) return

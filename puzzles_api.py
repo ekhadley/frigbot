@@ -122,9 +122,9 @@ async def post_solve(req: SolveReq):
 
 
 class Room:
-    def __init__(self):
+    def __init__(self, players: dict[str, dict]):
         self.sockets: set[WebSocket] = set()
-        self.players: dict[str, dict] = {}
+        self.players = players
 
     async def broadcast(self):
         payload = {"type": "state", "players": self.players}
@@ -141,20 +141,21 @@ class Room:
 rooms: dict[tuple[str, str], Room] = {}
 
 
-def room_for(game: str, instance_id: str) -> Room:
-    key = (game, instance_id)
+async def room_for(game: str, date: str) -> Room:
+    key = (game, date)
     if key not in rooms:
-        rooms[key] = Room()
+        players = await asyncio.to_thread(streaks_db.load_boards, game, date)
+        rooms[key] = Room(players)
     return rooms[key]
 
 
-@app.websocket("/ws/{game}/{instance_id}")
-async def ws_presence(ws: WebSocket, game: str, instance_id: str):
+@app.websocket("/ws/{game}/{puzzle_date}")
+async def ws_presence(ws: WebSocket, game: str, puzzle_date: str):
     if game not in ("connections", "wordle"):
         await ws.close(code=1008)
         return
     await ws.accept()
-    room = room_for(game, instance_id)
+    room = await room_for(game, puzzle_date)
     room.sockets.add(ws)
     await ws.send_json({"type": "state", "players": room.players})
     try:
@@ -162,12 +163,14 @@ async def ws_presence(ws: WebSocket, game: str, instance_id: str):
             msg = await ws.receive_json()
             if msg.get("type") == "update":
                 uid = msg["user"]["id"]
-                room.players[uid] = {k: v for k, v in msg.items() if k != "type"}
+                player = {k: v for k, v in msg.items() if k != "type"}
+                room.players[uid] = player
+                await asyncio.to_thread(streaks_db.save_board, game, puzzle_date, uid, player)
                 await room.broadcast()
     except WebSocketDisconnect:
         room.sockets.discard(ws)
         if not room.sockets:
-            rooms.pop((game, instance_id), None)
+            rooms.pop((game, puzzle_date), None)
 
 
 if FRONTEND_DIR.exists():
