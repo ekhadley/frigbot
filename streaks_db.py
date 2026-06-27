@@ -74,6 +74,14 @@ def save_board(game: str, puzzle_date: str, user_id: str, payload: dict) -> None
         )
 
 
+def delete_board(game: str, puzzle_date: str, user_id: str) -> None:
+    with db_connect() as conn:
+        conn.execute(
+            "DELETE FROM boards WHERE game = ? AND puzzle_date = ? AND user_id = ?",
+            (game, puzzle_date, user_id),
+        )
+
+
 def load_boards(game: str, puzzle_date: str) -> dict[str, dict]:
     with db_connect() as conn:
         rows = conn.execute(

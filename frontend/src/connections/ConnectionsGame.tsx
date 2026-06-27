@@ -6,6 +6,7 @@ import type { Game, Puzzle } from "./game"
 import { initGame, submit, toggle, shuffle, revealNext } from "./game"
 import { saveJson, loadJson } from "../storage"
 import { useGameRoom } from "../ws"
+import { DevTools } from "../DevTools"
 
 const storageKey = (userId: string, date: string) => `connections:${userId}:${date}`
 
@@ -69,6 +70,7 @@ export function ConnectionsGame({ session }: { session: Session }) {
         onReorder={(newRemaining) => setGame({ ...game, remaining: newRemaining })}
         onReveal={() => setGame(revealNext(game))}
       />
+      <DevTools session={session} game="connections" date={date} />
     </>
   )
 }

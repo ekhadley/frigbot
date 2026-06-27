@@ -7,6 +7,7 @@ import { initGame, colorsFor, computeStats, avgBits, DEFAULT_SETTINGS } from "./
 import { ANSWERS } from "./words"
 import { saveJson, loadJson } from "../storage"
 import { useGameRoom } from "../ws"
+import { DevTools } from "../DevTools"
 
 const storageKey = (userId: string, date: string) => `wordle:${userId}:${date}`
 const SETTINGS_KEY = "wordle:settings"
@@ -86,6 +87,7 @@ export function WordleGame({ session }: { session: Session }) {
         solution={game.solution}
       />
       <Board game={game} onChange={setGame} settings={settings} onSettingsChange={setSettings} />
+      <DevTools session={session} game="wordle" date={date} />
     </>
   )
 }

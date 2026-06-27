@@ -25,7 +25,9 @@ export function Board({
   const [shake, setShake] = useState(false)
   const [copied, setCopied] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
-  const [revealingRow, setRevealingRow] = useState<number | null>(null)
+  const [revealedRows, setRevealedRows] = useState<Set<number>>(
+    () => new Set(game.guesses.map((_, i) => i)),
+  )
   const [settledCount, setSettledCount] = useState<number>(WORD_LEN)
   const [bounceRow, setBounceRow] = useState<number | null>(null)
   const prevGuessCount = useRef(game.guesses.length)
@@ -40,7 +42,6 @@ export function Board({
     const won = game.done === "win"
     const totalReveal = REVEAL_DURATION + (WORD_LEN - 1) * REVEAL_STAGGER
 
-    setRevealingRow(i)
     setSettledCount(0)
     const timeouts: number[] = []
     for (let j = 0; j < WORD_LEN; j++) {
@@ -50,7 +51,7 @@ export function Board({
     }
     timeouts.push(
       window.setTimeout(() => {
-        setRevealingRow((r) => (r === i ? null : r))
+        setRevealedRows((s) => new Set(s).add(i))
         if (won) setBounceRow(i)
       }, totalReveal),
     )
@@ -98,7 +99,8 @@ export function Board({
   }, [game, settings])
 
   const colored = colorsFor(game)
-  const status = letterStatus(game, revealingRow !== null ? settledCount : undefined)
+  const pendingReveal = game.guesses.length > 0 && !revealedRows.has(game.guesses.length - 1)
+  const status = letterStatus(game, pendingReveal ? settledCount : undefined)
 
   const stats = useMemo(() => computeStats(game, ANSWERS), [game.done, game.guesses, game.solution])
 
@@ -152,7 +154,7 @@ export function Board({
           const isCurrent = i === game.guesses.length
           const letters = i < game.guesses.length ? game.guesses[i] : isCurrent ? game.current : ""
           const colors = i < game.guesses.length ? colored[i] : null
-          const isRevealing = revealingRow === i
+          const isRevealing = colors !== null && !revealedRows.has(i)
           const isBouncing = bounceRow === i
           return (
             <div key={i} className={`wordle-row ${isCurrent && shake ? "shake" : ""}`}>

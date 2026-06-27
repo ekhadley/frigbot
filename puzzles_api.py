@@ -121,6 +121,12 @@ async def post_solve(req: SolveReq):
     return {"ok": True}
 
 
+class DeleteBoardReq(BaseModel):
+    game: str
+    puzzle_date: str
+    user_id: str
+
+
 class Room:
     def __init__(self, players: dict[str, dict]):
         self.sockets: set[WebSocket] = set()
@@ -139,6 +145,23 @@ class Room:
 
 
 rooms: dict[tuple[str, str], Room] = {}
+
+
+@app.post("/api/board/delete")
+async def delete_board(req: DeleteBoardReq):
+    await asyncio.to_thread(streaks_db.delete_board, req.game, req.puzzle_date, req.user_id)
+    room = rooms.get((req.game, req.puzzle_date))
+    if room is not None:
+        room.players.pop(req.user_id, None)
+        await room.broadcast()
+    return {"ok": True}
+
+
+def _progress(player: dict) -> tuple[int, int]:
+    """Monotonic rank of a board: finished beats unfinished, then more moves wins.
+    Used to ignore stale updates from a second device that's behind."""
+    moves = len(player.get("words") or player.get("attempts") or [])
+    return (1 if player.get("done") else 0, moves)
 
 
 async def room_for(game: str, date: str) -> Room:
@@ -164,6 +187,9 @@ async def ws_presence(ws: WebSocket, game: str, puzzle_date: str):
             if msg.get("type") == "update":
                 uid = msg["user"]["id"]
                 player = {k: v for k, v in msg.items() if k != "type"}
+                current = room.players.get(uid)
+                if current is not None and _progress(player) < _progress(current):
+                    continue  # a behind device (e.g. other phone) can't regress presence
                 room.players[uid] = player
                 await asyncio.to_thread(streaks_db.save_board, game, puzzle_date, uid, player)
                 await room.broadcast()

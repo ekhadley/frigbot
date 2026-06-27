@@ -199,6 +199,7 @@ button.primary { background: #5865f2; color: #fff; border-color: #5865f2; }
 .end-summary { font-size: 13px; color: #b5bac1; text-align: center; font-variant-numeric: tabular-nums; }
 
 .spectators {
+  overflow-x: hidden;
   overflow-y: auto;
 }
 
@@ -216,7 +217,6 @@ button.primary { background: #5865f2; color: #fff; border-color: #5865f2; }
 .spec-head img { width: 24px; height: 24px; border-radius: 50%; }
 .spec-head .name { font-size: 13px; font-weight: 600; color: #f2f3f5; }
 .spec-head .badge {
-  margin-left: auto;
   font-size: 10px;
   background: #5865f2;
   color: #fff;
@@ -451,6 +451,7 @@ button.primary { background: #5865f2; color: #fff; border-color: #5865f2; }
 .spec-board-row {
   display: grid;
   grid-template-columns: repeat(5, 22px);
+  width: max-content;
   gap: 3px;
   position: relative;
   align-items: center;
@@ -480,6 +481,18 @@ button.primary { background: #5865f2; color: #fff; border-color: #5865f2; }
   font-variant-numeric: tabular-nums;
   pointer-events: none;
 }
+
+.dev-tools { margin-top: 12px; text-align: center; }
+.dev-tools button {
+  background: #3a1c1c;
+  color: #e6a3a3;
+  border: 1px solid #6b2f2f;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.dev-tools button:hover { background: #4a2424; }
 
 /* Mobile / narrow viewports */
 @media (max-width: 720px) {
