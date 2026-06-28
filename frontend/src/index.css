@@ -497,7 +497,10 @@ button.primary { background: #5865f2; color: #fff; border-color: #5865f2; }
 /* Mobile / narrow viewports */
 @media (max-width: 720px) {
   .app {
-    padding: 6px;
+    /* Discord's mobile activity overlay (join/leave bar) sits at the top of
+       the iframe and covers our tab switcher. Push content down so the tabs
+       clear it; respect the device safe-area inset on top of that. */
+    padding: calc(48px + env(safe-area-inset-top)) 6px 6px;
     gap: 6px;
   }
 
