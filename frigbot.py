@@ -166,17 +166,25 @@ class FrigBot:
             guild_id = str(interaction.guild_id) if interaction.guild_id else None
             channel_id = str(interaction.channel_id) if interaction.channel_id else None
             first = False
+            user_first = False
             if guild_id and channel_id:
                 first = await asyncio.to_thread(
                     streaks_db.record_launch_first_today, guild_id, channel_id, today
                 )
+                user_first = await asyncio.to_thread(
+                    streaks_db.record_user_launch_first_today, guild_id, today, str(interaction.user.id)
+                )
             await _respond_launch_activity(interaction)
             self.log('info', 'wordle_launched', "Wordle entry-point invoked", {
-                'guild_id': guild_id, 'channel_id': channel_id, 'first_today': first,
+                'guild_id': guild_id, 'channel_id': channel_id, 'first_today': first, 'user_first_today': user_first,
             })
             if first and guild_id and channel_id:
                 asyncio.create_task(self._send_first_launch_followup(
                     int(channel_id), guild_id, today, interaction.user.mention,
+                ))
+            if user_first and channel_id:
+                asyncio.create_task(self._send_user_launch_notice(
+                    int(channel_id), interaction.user.display_name,
                 ))
 
         @self.bot.event
@@ -551,6 +559,17 @@ class FrigBot:
             })
         except Exception as e:
             self.log('error', 'first_launch_followup_failed', "First-launch followup failed", {'error': str(e)})
+
+    async def _send_user_launch_notice(self, channel_id: int, username: str):
+        """First time a user launches the activity today: announce it with a play button."""
+        try:
+            channel = self.bot.get_channel(channel_id) or await self.bot.fetch_channel(channel_id)
+            await channel.send(f"{username} is Wordling...", view=LaunchView())
+            self.log('info', 'user_launch_notice_posted', "User launch notice sent", {
+                'channel_id': channel_id, 'username': username,
+            })
+        except Exception as e:
+            self.log('error', 'user_launch_notice_failed', "User launch notice failed", {'error': str(e)})
 
     async def _post_wordle_recap(self) -> bool:
         if not self.guild_id:

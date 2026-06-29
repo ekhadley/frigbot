@@ -36,6 +36,13 @@ def init_db():
               first_launch_at TEXT NOT NULL,
               PRIMARY KEY (guild_id, puzzle_date)
             );
+            CREATE TABLE IF NOT EXISTS user_launches (
+              guild_id     TEXT NOT NULL,
+              puzzle_date  TEXT NOT NULL,
+              user_id      TEXT NOT NULL,
+              launched_at  TEXT NOT NULL,
+              PRIMARY KEY (guild_id, puzzle_date, user_id)
+            );
             CREATE TABLE IF NOT EXISTS guild_channels (
               guild_id   TEXT PRIMARY KEY,
               channel_id TEXT NOT NULL,
@@ -158,6 +165,16 @@ def record_launch_first_today(guild_id: str, channel_id: str, today: str) -> boo
             (guild_id, channel_id, now),
         )
     return first
+
+
+def record_user_launch_first_today(guild_id: str, today: str, user_id: str) -> bool:
+    """Returns True if this is the user's first launch for (guild, today)."""
+    with db_connect() as conn:
+        cur = conn.execute(
+            "INSERT OR IGNORE INTO user_launches (guild_id, puzzle_date, user_id, launched_at) VALUES (?, ?, ?, ?)",
+            (guild_id, today, user_id, datetime.now(ET).isoformat()),
+        )
+    return cur.rowcount == 1
 
 
 def launched_today(guild_id: str, today: str) -> bool:

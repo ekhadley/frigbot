@@ -3,7 +3,7 @@ import type { Session } from "../discord"
 import { Board } from "./Board"
 import { Spectators } from "./Spectators"
 import type { Game, WordlePuzzle, WordleSettings } from "./game"
-import { initGame, colorsFor, computeStats, avgBits, DEFAULT_SETTINGS } from "./game"
+import { initGame, colorsFor, computeStats, avgBits, DEFAULT_SETTINGS, MAX_GUESSES } from "./game"
 import { ANSWERS } from "./words"
 import { saveJson, loadJson } from "../storage"
 import { useGameRoom } from "../ws"
@@ -43,6 +43,15 @@ export function WordleGame({ session }: { session: Session }) {
   }
   const date = game?.puzzle.print_date ?? null
   const players = useGameRoom("wordle", date, session.user, payload)
+
+  // Restore our own board from the server when another device is further along.
+  useEffect(() => {
+    if (!game || !location.hostname.endsWith("discordsays.com")) return
+    const words: string[] | undefined = players[session.user.id]?.words
+    if (!words || words.length <= game.guesses.length) return
+    const done = words[words.length - 1] === game.solution ? "win" : words.length >= MAX_GUESSES ? "lose" : null
+    setGame({ ...game, guesses: words, current: "", done })
+  }, [players, game])
 
   useEffect(() => {
     if (!game) return
