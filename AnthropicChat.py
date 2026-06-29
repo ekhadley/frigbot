@@ -44,12 +44,12 @@ class AnthropicChatAssistant(ChatAssistant):
     def makeConversationHistory(self, chat_context: list[dict]) -> list[dict]:
         return chat_context
 
-    def getModelResponse(self, chat_context: list[dict]):
+    def getModelResponse(self, chat_context: list[dict], on_text: callable = None):
         hist = self.makeConversationHistory(chat_context)
         self.log('info', 'chat_api_request', "Anthropic chat request", {'backend': 'anthropic', 'model': self.chat_model_name, 'message_count': len(hist), 'messages': hist})
         sent_prev_message_id = self._prev_message_id  # captured before this call overwrites it
 
-        is_adaptive = "4-7" in self.chat_model_name or "4.7" in self.chat_model_name
+        is_adaptive = "4-8" in self.chat_model_name or "4.8" in self.chat_model_name
         if is_adaptive:
             thinking_config = {"type": "adaptive"}
             extra_kwargs = {"output_config": {"effort": "high"}}
@@ -79,11 +79,15 @@ class AnthropicChatAssistant(ChatAssistant):
                 all_thinking = []
                 last_msg = None
                 for message in runner:
+                    turn_text = []
                     for block in message.content:
                         if block.type == "thinking":
                             all_thinking.append(block.thinking)
                         elif block.type == "text" and block.text.strip():
                             all_text.append(block.text)
+                            turn_text.append(block.text)
+                    if on_text and turn_text:
+                        on_text(fixLinks("".join(turn_text)))
                     last_msg = message
                 return last_msg, all_text, all_thinking
 
@@ -113,6 +117,8 @@ class AnthropicChatAssistant(ChatAssistant):
             )
             all_text_parts = [block.text for block in response.content if block.type == "text"]
             all_thinking_parts = [block.thinking for block in response.content if block.type == "thinking"]
+            if on_text and all_text_parts:
+                on_text(fixLinks("".join(all_text_parts)))
 
         content_types = [block.type for block in response.content]
         has_web_search = any(t in ('server_tool_use', 'web_search_tool_result') for t in content_types)
@@ -150,8 +156,8 @@ class AnthropicChatAssistant(ChatAssistant):
         }
         return response, all_text_parts, cache_diagnostics
 
-    def getCompletion(self, chat_context: list[dict]) -> str:
-        response, text_parts, cache_diagnostics = self.getModelResponse(chat_context)
+    def getCompletion(self, chat_context: list[dict], on_text: callable = None) -> str:
+        response, text_parts, cache_diagnostics = self.getModelResponse(chat_context, on_text)
         text_content = "".join(text_parts)
 
         if not text_content.strip():
@@ -160,8 +166,11 @@ class AnthropicChatAssistant(ChatAssistant):
                 'content_block_types': [block.type for block in response.content],
             })
             text_content = "(I processed your request but generated no text response)"
+            if on_text:
+                on_text(text_content)
 
-        text_content = fixLinks(text_content)
+        if not on_text:  # when streaming, fixLinks is applied per-chunk in getModelResponse
+            text_content = fixLinks(text_content)
 
         self.log('info', 'chat_usage', "Completion usage", {
             'backend': 'anthropic',

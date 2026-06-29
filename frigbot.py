@@ -215,9 +215,38 @@ class FrigBot:
                 msgs = [self._msg_to_dict(m) for m in history]
                 chat_context = self.asst.makeContext(msgs)
 
+                loop = asyncio.get_running_loop()
+                sent_first = False
+
+                async def send_text(text):
+                    nonlocal sent_first
+                    parts = text.replace("\n\n", "\n").strip().split("<split>")
+                    final_parts = []
+                    for part in parts:
+                        while len(part) > self.max_message_length:
+                            final_parts.append(part[:self.max_message_length])
+                            part = part[self.max_message_length:]
+                        final_parts.append(part)
+                    for part in final_parts:
+                        if not part.strip():
+                            continue
+                        if not sent_first:
+                            await message.reply(part)
+                            sent_first = True
+                        else:
+                            await message.channel.send(part)
+
+                # called from the worker thread; blocks it until the send completes (preserves order)
+                def on_text(text):
+                    asyncio.run_coroutine_threadsafe(send_text(text), loop).result()
+
                 async with message.channel.typing():
                     try:
-                        completion = await asyncio.to_thread(self.asst.getCompletion, chat_context)
+                        if isinstance(self.asst, AnthropicChatAssistant):
+                            await asyncio.to_thread(self.asst.getCompletion, chat_context, on_text)
+                        else:
+                            completion = await asyncio.to_thread(self.asst.getCompletion, chat_context)
+                            await send_text(completion)
                     except Exception as e:
                         self.log('error', 'chat_failed', "Chat completion failed", {'error': str(e)})
                         self.logger.exception("Chat completion exception details")
@@ -226,20 +255,12 @@ class FrigBot:
                         reply = f"error: {status}"
                         if detail and detail != str(status):
                             reply += f" — {detail[:300]}"
-                        await message.reply(reply)
+                        if sent_first:
+                            await message.channel.send(reply)
+                        else:
+                            await message.reply(reply)
                         return
 
-                parts = completion.replace("\n\n", "\n").strip().split("<split>")
-                final_parts = []
-                for part in parts:
-                    while len(part) > self.max_message_length:
-                        final_parts.append(part[:self.max_message_length])
-                        part = part[self.max_message_length:]
-                    final_parts.append(part)
-
-                await message.reply(final_parts[0])
-                for part in final_parts[1:]:
-                    await message.channel.send(part)
                 self.log('info', 'chat_completed', "Chat completion sent")
                 return
 
