@@ -26,6 +26,31 @@ type Flight = {
 const WIGGLE_MS = 640
 const SWAP_MS = 1000
 
+// Shrinks long words to fit on one line; never grows past the natural font size.
+function FitText({ text }: { text: string }) {
+  const ref = useRef<HTMLSpanElement>(null)
+  const [scale, setScale] = useState(1)
+  useLayoutEffect(() => {
+    const el = ref.current!
+    const fit = () => {
+      const avail = el.parentElement!.clientWidth - 8
+      const w = el.scrollWidth
+      setScale(w > avail ? avail / w : 1)
+    }
+    fit()
+    const ro = new ResizeObserver(fit)
+    ro.observe(el)
+    ro.observe(el.parentElement!)
+    document.fonts.ready.then(fit)
+    return () => ro.disconnect()
+  }, [text])
+  return (
+    <span ref={ref} className="fit-text" style={{ transform: `scale(${scale})` }}>
+      {text}
+    </span>
+  )
+}
+
 export function Board({ game, onToggle, onSubmit, onShuffle, onDeselect, onReorder, onReveal }: Props) {
   const { remaining, selected, solved, mistakes, done, attempts } = game
   const last = attempts[attempts.length - 1]
@@ -215,7 +240,7 @@ export function Board({ game, onToggle, onSubmit, onShuffle, onDeselect, onReord
               onClick={() => onToggle(word)}
               disabled={!!done || busy}
             >
-              {word}
+              <FitText text={word} />
             </button>
           )
         })}
@@ -264,7 +289,7 @@ export function Board({ game, onToggle, onSubmit, onShuffle, onDeselect, onReord
                   color: isSelected ? "#1e1f22" : "#f2f3f5",
                 }}
               >
-                <span className="flyer-word">{w}</span>
+                <FitText text={w} />
               </div>
             )
           })}

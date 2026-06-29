@@ -75,6 +75,8 @@ html, body, #root {
 
 .tile {
   aspect-ratio: 1.4 / 1;
+  min-width: 0;
+  overflow: hidden;
   border: none;
   border-radius: 18px;
   background: #2b2d31;
@@ -86,6 +88,8 @@ html, body, #root {
   cursor: pointer;
   transition: background 0.1s, transform 0.05s;
 }
+
+.fit-text { display: inline-block; white-space: nowrap; }
 
 .tile.selected { background: #4e5058; color: #fff; }
 .tile:disabled { cursor: default; opacity: 1; }
@@ -574,7 +578,6 @@ button.primary { background: #5865f2; color: #fff; border-color: #5865f2; }
     letter-spacing: 0;
     padding: 0 4px;
     aspect-ratio: 1.5 / 1;
-    word-break: break-word;
   }
   .solved-row { border-radius: clamp(8px, 1.6dvh, 14px); padding: 6px 8px; }
   .solved-title { font-size: clamp(11px, 1.8dvh, 15px); }
