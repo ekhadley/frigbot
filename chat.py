@@ -152,6 +152,11 @@ Store good memories aggressively, but use them sparingly in responses. Stay focu
             prefix = f"[Reply to {ref_author}: '{ref_text}'] "
         return f"{prefix}{author}: {content}"
 
+    def formatTimestamp(self, msg):
+        # created_at is UTC; render in the server's local timezone
+        local = msg['timestamp'].astimezone()
+        return local.strftime("[%-I:%M %p %-m/%-d]")
+
     def makeContext(self, msgs: list[dict]) -> list[dict]:
         chronological = msgs[::-1]
         history = []
@@ -159,6 +164,7 @@ Store good memories aggressively, but use them sparingly in responses. Stay focu
             is_bot = msg['author']['id'] == self.bot_id
             role = "assistant" if is_bot else "user"
             content = self.resolveMentions(msg) if is_bot else self.formatMessage(msg)
+            content = f"{self.formatTimestamp(msg)} {content}"
 
             if history and history[-1]["role"] == role:
                 history[-1]["content"] += "\n" + content

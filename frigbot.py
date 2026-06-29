@@ -123,6 +123,7 @@ class FrigBot:
         return {
             'id': str(msg.id),
             'content': msg.content,
+            'timestamp': msg.created_at,
             'author': {
                 'id': author_id,
                 'global_name': msg.author.display_name,
