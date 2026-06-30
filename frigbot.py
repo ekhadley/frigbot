@@ -30,7 +30,6 @@ async def _respond_launch_activity(interaction: discord.Interaction):
         interaction_id=interaction.id, token=interaction.token,
     )
     await interaction.client.http.request(route, json={"type": 12})
-    interaction.response._responded = True
 
 
 class LaunchView(discord.ui.View):
@@ -166,10 +165,10 @@ class FrigBot:
             today = datetime.datetime.now(ET).date().isoformat()
             guild_id = str(interaction.guild_id) if interaction.guild_id else None
             channel_id = str(interaction.channel_id) if interaction.channel_id else None
-            first = False
             user_first = False
             if guild_id and channel_id:
-                first = await asyncio.to_thread(
+                # Still record the launch so the scheduled streak reminder stays silent once someone has played.
+                await asyncio.to_thread(
                     streaks_db.record_launch_first_today, guild_id, channel_id, today
                 )
                 user_first = await asyncio.to_thread(
@@ -177,12 +176,8 @@ class FrigBot:
                 )
             await _respond_launch_activity(interaction)
             self.log('info', 'wordle_launched', "Wordle entry-point invoked", {
-                'guild_id': guild_id, 'channel_id': channel_id, 'first_today': first, 'user_first_today': user_first,
+                'guild_id': guild_id, 'channel_id': channel_id, 'user_first_today': user_first,
             })
-            if first and guild_id and channel_id:
-                asyncio.create_task(self._send_first_launch_followup(
-                    int(channel_id), guild_id, today, interaction.user.mention,
-                ))
             if user_first and channel_id:
                 asyncio.create_task(self._send_user_launch_notice(
                     int(channel_id), interaction.user.display_name,
@@ -568,19 +563,6 @@ class FrigBot:
             bits_str = f"avg {bits:.2f} bits" if isinstance(bits, (int, float)) else "1 guess"
             lines.append(f"• **{name}** — {guesses} guesses ({bits_str})")
         return lines
-
-    async def _send_first_launch_followup(self, channel_id: int, guild_id: str, today: str, user_mention: str):
-        """First launch of the day: post launch announcement + streak recap with a play button."""
-        data = await asyncio.to_thread(streaks_db.yesterday_summary, guild_id)
-        lines = [f"🎯 **Wordle has been launched** by {user_mention}.", *self._streak_block(data)]
-        try:
-            channel = self.bot.get_channel(channel_id) or await self.bot.fetch_channel(channel_id)
-            await channel.send("\n".join(lines), view=LaunchView())
-            self.log('info', 'first_launch_followup_posted', "First-launch followup sent", {
-                'guild_id': guild_id, 'channel_id': channel_id, 'streak': data.get("streak") or 0,
-            })
-        except Exception as e:
-            self.log('error', 'first_launch_followup_failed', "First-launch followup failed", {'error': str(e)})
 
     async def _send_user_launch_notice(self, channel_id: int, username: str):
         """First time a user launches the activity today: announce it with a play button."""
