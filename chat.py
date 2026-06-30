@@ -9,6 +9,7 @@ MEMORIES_DIR = Path(__file__).parent / "memories"
 
 MAX_TOKENS = 64_000
 REQUEST_TIMEOUT = 120  # seconds
+TIMESTAMPS = False  # prefix each message with a [time date] tag in chat context
 
 def fixLinks(text: str) -> str:
     # return re.sub(r'\[(.*?)\]\((.*?)\)', r'[\1](<\2>)', text)
@@ -165,7 +166,8 @@ Store good memories aggressively, but use them sparingly in responses. Stay focu
             is_bot = msg['author']['id'] == self.bot_id
             role = "assistant" if is_bot else "user"
             content = self.resolveMentions(msg) if is_bot else self.formatMessage(msg)
-            content = f"{self.formatTimestamp(msg)} {content}"
+            if TIMESTAMPS:
+                content = f"{self.formatTimestamp(msg)} {content}"
 
             if history and history[-1]["role"] == role:
                 history[-1]["content"] += "\n" + content
