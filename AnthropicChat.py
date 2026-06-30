@@ -49,13 +49,8 @@ class AnthropicChatAssistant(ChatAssistant):
         self.log('info', 'chat_api_request', "Anthropic chat request", {'backend': 'anthropic', 'model': self.chat_model_name, 'message_count': len(hist), 'messages': hist})
         sent_prev_message_id = self._prev_message_id  # captured before this call overwrites it
 
-        is_adaptive = "4-7" in self.chat_model_name or "4.7" in self.chat_model_name
-        if is_adaptive:
-            thinking_config = {"type": "adaptive"}
-            extra_kwargs = {"output_config": {"effort": "high"}}
-        else:
-            thinking_config = {"type": "enabled", "budget_tokens": 12_000}
-            extra_kwargs = {}
+        thinking_config = {"type": "adaptive"}
+        extra_kwargs = {"output_config": {"effort": "high"}}
 
         if self.memory_tool:
             self.memory_tool.set_context(hist)

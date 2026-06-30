@@ -52,6 +52,9 @@ class FrigBot:
         self.state_dict_path = state_dict_path
         self.start_time = datetime.datetime.now()
         self.max_message_length = 2000
+        self.window_soft = 100  # target history window size
+        self.window_hard = 160  # re-baseline once the window grows past this
+        self.history_cutoff_id = None  # frozen exclusive lower bound; keeps the prompt prefix cache-stable
 
         intents = discord.Intents.default()
         intents.message_content = True
@@ -81,6 +84,26 @@ class FrigBot:
         data['event_type'] = event_type
         extra = {'data': data}
         getattr(self.logger, level, self.logger.info)(message, extra=extra)
+
+    async def _fetch_window(self, channel):
+        """Fetch chat history with a frozen lower bound so the prompt prefix stays
+        byte-identical across turns (prompt caching is a strict prefix match — a
+        plain sliding window changes the front every turn and never gets a cache
+        read). The window grows append-only from history_cutoff_id until it exceeds
+        window_hard, then re-baselines to the newest window_soft messages and freezes
+        a new cutoff. Returns messages newest-first, matching channel.history()."""
+        cutoff = self.history_cutoff_id
+        chrono = []  # oldest -> newest
+        if cutoff is not None:
+            chrono = [m async for m in channel.history(limit=self.window_hard + 1, after=discord.Object(id=cutoff), oldest_first=True)]
+        if cutoff is None or len(chrono) > self.window_hard:
+            newest = [m async for m in channel.history(limit=self.window_soft)]
+            chrono = newest[::-1]
+            if chrono:
+                self.history_cutoff_id = chrono[0].id - 1  # exclusive bound that still includes chrono[0]
+                self.save_state()
+                self.log('info', 'history_rebaselined', "History window re-baselined", {'cutoff_id': self.history_cutoff_id, 'kept': len(chrono)})
+        return chrono[::-1]  # newest -> oldest
 
     def _init_assistant(self):
         bot_id = str(self.bot.user.id)
@@ -206,7 +229,7 @@ class FrigBot:
                 self.log('info', 'chat_requested', "Chat completion requested", {
                     'trigger': 'reply' if is_reply else 'mention',
                 })
-                history = [m async for m in message.channel.history(limit=100)]
+                history = await self._fetch_window(message.channel)
                 msgs = [self._msg_to_dict(m) for m in history]
                 chat_context = self.asst.makeContext(msgs)
 
@@ -620,6 +643,7 @@ class FrigBot:
             "current_chat_model": self.current_chat_model,
             "current_image_model": self.current_image_model,
             "rps_scores": self.rps_scores,
+            "history_cutoff_id": self.history_cutoff_id,
             "start_time": self.start_time.isoformat(),
             "save_time": datetime.datetime.now().isoformat(),
         }
@@ -639,6 +663,7 @@ class FrigBot:
         self.rps_scores = saved.get("rps_scores", {})
         self.current_chat_model = saved.get("current_chat_model", self.current_chat_model)
         self.current_image_model = saved.get("current_image_model", self.current_image_model)
+        self.history_cutoff_id = saved.get("history_cutoff_id", self.history_cutoff_id)
         self.log('info', 'state_loaded', "State loaded", {'file': self.state_dict_path})
 
     async def start(self):
