@@ -89,7 +89,8 @@ html, body, #root {
   transition: background 0.1s, transform 0.05s;
 }
 
-.fit-text { display: inline-block; white-space: nowrap; }
+.fit-text { display: inline-block; }
+.fit-measure { position: absolute; visibility: hidden; width: min-content; }
 
 .tile.selected { background: #4e5058; color: #fff; }
 .tile:disabled { cursor: default; opacity: 1; }

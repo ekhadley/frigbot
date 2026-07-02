@@ -26,28 +26,38 @@ type Flight = {
 const WIGGLE_MS = 640
 const SWAP_MS = 1000
 
-// Shrinks long words to fit on one line; never grows past the natural font size.
+// Wraps between words as usual, but when a single word is wider than the tile,
+// shrinks the text to fit instead of breaking mid-word. Never grows past natural size.
+// The hidden .fit-measure twin has width:min-content, i.e. the widest single word.
 function FitText({ text }: { text: string }) {
-  const ref = useRef<HTMLSpanElement>(null)
-  const [scale, setScale] = useState(1)
+  const measureRef = useRef<HTMLSpanElement>(null)
+  const [fit, setFit] = useState<{ scale: number; width: number } | null>(null)
   useLayoutEffect(() => {
-    const el = ref.current!
-    const fit = () => {
+    const el = measureRef.current!
+    const refit = () => {
       const avail = el.parentElement!.clientWidth - 8
-      const w = el.scrollWidth
-      setScale(w > avail ? avail / w : 1)
+      const w = el.getBoundingClientRect().width
+      setFit(w > avail ? { scale: avail / w, width: w } : null)
     }
-    fit()
-    const ro = new ResizeObserver(fit)
+    refit()
+    const ro = new ResizeObserver(refit)
     ro.observe(el)
     ro.observe(el.parentElement!)
-    document.fonts.ready.then(fit)
+    document.fonts.ready.then(refit)
     return () => ro.disconnect()
   }, [text])
   return (
-    <span ref={ref} className="fit-text" style={{ transform: `scale(${scale})` }}>
-      {text}
-    </span>
+    <>
+      <span ref={measureRef} className="fit-measure" aria-hidden>
+        {text}
+      </span>
+      <span
+        className="fit-text"
+        style={fit ? { width: fit.width, transform: `scale(${fit.scale})` } : undefined}
+      >
+        {text}
+      </span>
+    </>
   )
 }
 
