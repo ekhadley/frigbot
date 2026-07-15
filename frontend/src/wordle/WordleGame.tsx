@@ -3,7 +3,7 @@ import type { Session } from "../discord"
 import { Board } from "./Board"
 import { Spectators } from "./Spectators"
 import type { Game, WordlePuzzle, WordleSettings } from "./game"
-import { initGame, colorsFor, computeStats, avgBits, DEFAULT_SETTINGS, MAX_GUESSES } from "./game"
+import { initGame, colorsFor, computeStats, avgBits, allHardMode, DEFAULT_SETTINGS, MAX_GUESSES } from "./game"
 import { ANSWERS } from "./words"
 import { saveJson, loadJson } from "../storage"
 import { useGameRoom } from "../ws"
@@ -12,7 +12,7 @@ import { DevTools } from "../DevTools"
 const storageKey = (userId: string, date: string) => `wordle:${userId}:${date}`
 const SETTINGS_KEY = "wordle:settings"
 
-type Saved = { guesses: string[]; done: "win" | "lose" | null }
+type Saved = { guesses: string[]; hardModes?: boolean[]; done: "win" | "lose" | null }
 
 export function WordleGame({ session }: { session: Session }) {
   const [game, setGame] = useState<Game | null>(null)
@@ -31,7 +31,7 @@ export function WordleGame({ session }: { session: Session }) {
       const fresh = initGame(puzzle)
       const isDev = !location.hostname.endsWith("discordsays.com")
       const saved = isDev ? null : loadJson<Saved>(storageKey(session.user.id, puzzle.print_date))
-      setGame(saved ? { ...fresh, guesses: saved.guesses, done: saved.done } : fresh)
+      setGame(saved ? { ...fresh, guesses: saved.guesses, hardModes: saved.hardModes ?? [], done: saved.done } : fresh)
     })()
   }, [session.user.id])
 
@@ -39,6 +39,7 @@ export function WordleGame({ session }: { session: Session }) {
     guesses: game.guesses.length,
     colors: colorsFor(game),
     words: game.guesses,
+    hardModes: game.hardModes,
     done: game.done !== null,
   }
   const date = game?.puzzle.print_date ?? null
@@ -49,14 +50,16 @@ export function WordleGame({ session }: { session: Session }) {
     if (!game || !location.hostname.endsWith("discordsays.com")) return
     const words: string[] | undefined = players[session.user.id]?.words
     if (!words || words.length <= game.guesses.length) return
+    const hardModes: boolean[] = players[session.user.id]?.hardModes ?? []
     const done = words[words.length - 1] === game.solution ? "win" : words.length >= MAX_GUESSES ? "lose" : null
-    setGame({ ...game, guesses: words, current: "", done })
+    setGame({ ...game, guesses: words, hardModes, current: "", done })
   }, [players, game])
 
   useEffect(() => {
     if (!game) return
     saveJson(storageKey(session.user.id, game.puzzle.print_date), {
       guesses: game.guesses,
+      hardModes: game.hardModes,
       done: game.done,
     })
     if (game.done === "win" && session.guildId) {
@@ -70,6 +73,7 @@ export function WordleGame({ session }: { session: Session }) {
           username: session.user.global_name ?? session.user.username,
           guesses: game.guesses.length,
           avg_bits: stats ? avgBits(game, stats) : null,
+          hard_mode: allHardMode(game),
         }
         fetch("/api/wordle/solve", {
           method: "POST",

@@ -110,13 +110,14 @@ class SolveReq(BaseModel):
     username: str | None = None
     guesses: int
     avg_bits: float | None = None
+    hard_mode: bool = False
 
 
 @app.post("/api/wordle/solve")
 async def post_solve(req: SolveReq):
     await asyncio.to_thread(
         streaks_db.record_solve,
-        req.guild_id, req.puzzle_date, req.user_id, req.username, req.guesses, req.avg_bits,
+        req.guild_id, req.puzzle_date, req.user_id, req.username, req.guesses, req.avg_bits, req.hard_mode,
     )
     return {"ok": True}
 

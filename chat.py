@@ -229,8 +229,8 @@ Store good memories aggressively, but use them sparingly in responses. Stay focu
         if 'usage' in response:
             usage = response['usage']
             self.log('info', 'chat_usage', "Completion usage", {'backend': 'openrouter', 'prompt_tokens': usage.get('prompt_tokens'), 'completion_tokens': usage.get('completion_tokens'), 'total_tokens': usage.get('total_tokens')})
-        if reasoning:
-            self.log('info', 'chat_reasoning', "Model reasoning", {'backend': 'openrouter', 'reasoning': reasoning})
+        # reasoning null = field absent from response (model/provider didn't return it); "" = returned but empty
+        self.log('info', 'chat_reasoning', "Model reasoning", {'backend': 'openrouter', 'reasoning': reasoning})
         
         return text_content
     

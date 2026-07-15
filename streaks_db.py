@@ -26,6 +26,7 @@ def init_db():
               username     TEXT,
               guesses      INTEGER NOT NULL,
               avg_bits     REAL,
+              hard_mode    INTEGER NOT NULL DEFAULT 0,
               solved_at    TEXT NOT NULL,
               PRIMARY KEY (guild_id, puzzle_date, user_id)
             );
@@ -58,15 +59,18 @@ def init_db():
             );
             """
         )
+        cols = [r["name"] for r in conn.execute("PRAGMA table_info(solves)")]
+        if "hard_mode" not in cols:
+            conn.execute("ALTER TABLE solves ADD COLUMN hard_mode INTEGER NOT NULL DEFAULT 0")
 
 
 def record_solve(guild_id: str, puzzle_date: str, user_id: str, username: str | None,
-                 guesses: int, avg_bits: float | None) -> None:
+                 guesses: int, avg_bits: float | None, hard_mode: bool = False) -> None:
     with db_connect() as conn:
         conn.execute(
-            "INSERT OR IGNORE INTO solves (guild_id, puzzle_date, user_id, username, guesses, avg_bits, solved_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (guild_id, puzzle_date, user_id, username, guesses, avg_bits, datetime.now(ET).isoformat()),
+            "INSERT OR IGNORE INTO solves (guild_id, puzzle_date, user_id, username, guesses, avg_bits, hard_mode, solved_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (guild_id, puzzle_date, user_id, username, guesses, avg_bits, int(hard_mode), datetime.now(ET).isoformat()),
         )
 
 
@@ -120,7 +124,7 @@ def yesterday_summary(guild_id: str) -> dict:
     today = datetime.now(ET).date().isoformat()
     with db_connect() as conn:
         solvers = conn.execute(
-            "SELECT user_id, username, guesses, avg_bits, solved_at FROM solves "
+            "SELECT user_id, username, guesses, avg_bits, hard_mode, solved_at FROM solves "
             "WHERE guild_id = ? AND puzzle_date = ? ORDER BY solved_at ASC",
             (guild_id, yday),
         ).fetchall()
@@ -144,6 +148,7 @@ def yesterday_summary(guild_id: str) -> dict:
                 "username": r["username"],
                 "guesses": r["guesses"],
                 "avg_bits": r["avg_bits"],
+                "hard_mode": bool(r["hard_mode"]),
             }
             for r in solvers
         ],

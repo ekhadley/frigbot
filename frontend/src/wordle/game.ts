@@ -12,6 +12,7 @@ export type Game = {
   puzzle: WordlePuzzle
   solution: string
   guesses: string[]
+  hardModes: boolean[] // per guess: was hard mode on when it was submitted
   current: string
   done: "win" | "lose" | null
 }
@@ -30,6 +31,7 @@ export function initGame(puzzle: WordlePuzzle): Game {
     puzzle,
     solution: puzzle.solution.toUpperCase(),
     guesses: [],
+    hardModes: [],
     current: "",
     done: null,
   }
@@ -83,12 +85,17 @@ export function trySubmit(g: Game, accepted: Set<string>, hardMode: boolean): { 
     return { game: g, invalid: true, reason: "Guess must match all clues" }
   }
   const guesses = [...g.guesses, g.current]
+  const hardModes = [...g.hardModes, hardMode]
   const won = g.current === g.solution
   const lost = !won && guesses.length >= MAX_GUESSES
   return {
-    game: { ...g, guesses, current: "", done: won ? "win" : lost ? "lose" : null },
+    game: { ...g, guesses, hardModes, current: "", done: won ? "win" : lost ? "lose" : null },
     invalid: false,
   }
+}
+
+export function allHardMode(g: Game): boolean {
+  return g.hardModes.length === g.guesses.length && g.hardModes.every(Boolean)
 }
 
 export function colorsFor(g: Game): Color[][] {

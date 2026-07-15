@@ -49,7 +49,7 @@ class AnthropicChatAssistant(ChatAssistant):
         self.log('info', 'chat_api_request', "Anthropic chat request", {'backend': 'anthropic', 'model': self.chat_model_name, 'message_count': len(hist), 'messages': hist})
         sent_prev_message_id = self._prev_message_id  # captured before this call overwrites it
 
-        thinking_config = {"type": "adaptive"}
+        thinking_config = {"type": "adaptive", "display": "summarized"}  # default display is "omitted": blocks arrive with empty text
         extra_kwargs = {"output_config": {"effort": "high"}}
 
         if self.memory_tool:
@@ -127,8 +127,8 @@ class AnthropicChatAssistant(ChatAssistant):
             'messages': hist,
             'text': all_text_parts,
         })
-        if all_thinking_parts:
-            self.log('info', 'chat_reasoning', "Model reasoning", {'backend': 'anthropic', 'reasoning': all_thinking_parts})
+        # reasoning [] = no thinking blocks in response; [""] = blocks arrived but text was empty (retrieval problem)
+        self.log('info', 'chat_reasoning', "Model reasoning", {'backend': 'anthropic', 'reasoning': all_thinking_parts})
         if has_web_search:
             self.log('info', 'web_search_used', "Web search was used in response")
 

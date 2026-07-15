@@ -583,8 +583,14 @@ class FrigBot:
             name = s.get("username") or s.get("user_id")
             guesses = s.get("guesses")
             bits = s.get("avg_bits")
-            bits_str = f"avg {bits:.2f} bits" if isinstance(bits, (int, float)) else "1 guess"
-            lines.append(f"• **{name}** — {guesses} guesses ({bits_str})")
+            parts = []
+            if isinstance(bits, (int, float)):
+                parts.append(f"avg {bits:.2f} bits")
+            if s.get("hard_mode"):
+                parts.append("hard mode")
+            noun = "guess" if guesses == 1 else "guesses"
+            detail = f" ({', '.join(parts)})" if parts else ""
+            lines.append(f"• **{name}** — {guesses} {noun}{detail}")
         return lines
 
     async def _send_user_launch_notice(self, channel_id: int, username: str):
