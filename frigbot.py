@@ -126,6 +126,17 @@ class FrigBot:
                 enable_web_search=False,
             )
 
+    @staticmethod
+    def _msg_content(msg: discord.Message) -> str:
+        """Message text, with a marker appended when the message carries attachments."""
+        is_image = [(a.content_type or "").startswith("image/") for a in msg.attachments]
+        markers = []
+        if any(is_image):
+            markers.append("[Message Contains Image]")
+        if not all(is_image):
+            markers.append("[Message Contains File]")
+        return " ".join([msg.content, *markers]).strip()
+
     def _msg_to_dict(self, msg: discord.Message) -> dict:
         """Convert discord.Message to the dict format chat.py expects."""
         author_id = str(msg.author.id)
@@ -139,12 +150,12 @@ class FrigBot:
                     'id': str(msg.reference.resolved.author.id),
                     'global_name': msg.reference.resolved.author.display_name,
                 },
-                'content': msg.reference.resolved.content,
+                'content': self._msg_content(msg.reference.resolved),
             }
 
         return {
             'id': str(msg.id),
-            'content': msg.content,
+            'content': self._msg_content(msg),
             'timestamp': msg.created_at,
             'author': {
                 'id': author_id,
