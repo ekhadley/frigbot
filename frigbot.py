@@ -52,8 +52,8 @@ class FrigBot:
         self.state_dict_path = state_dict_path
         self.start_time = datetime.datetime.now()
         self.max_message_length = 2000
-        self.window_soft = 100  # target history window size
-        self.window_hard = 160  # re-baseline once the window grows past this
+        self.window_soft = 50  # target history window size
+        self.window_hard = 80  # re-baseline once the window grows past this
         self.history_cutoff_id = None  # frozen exclusive lower bound; keeps the prompt prefix cache-stable
 
         intents = discord.Intents.default()
@@ -294,7 +294,7 @@ class FrigBot:
                 return
 
             if random.random() > 0.9 and contains_scrambled(message.content, "itysl"):
-                gif = await asyncio.to_thread(self._random_gif, "itysl", 500)
+                gif = await asyncio.to_thread(self._random_gif, "itysl")
                 await message.channel.send(gif)
 
     def _register_commands(self):
@@ -519,10 +519,11 @@ class FrigBot:
         self.log('warning', 'model_error', "Image model not found", {'model': model_name})
         return f"no image-capable model found for {model_name} [Available image models](<{self.asst.available_image_models_link}>)"
 
-    def _random_gif(self, query: str, num: int = 100) -> str:
-        url = f"https://g.tenor.com/v2/search?q={query}&key={os.environ['TENOR_API_KEY']}&limit={num}"
-        r = requests.get(url)
-        urls = [g["url"] for g in r.json()["results"]]
+    def _random_gif(self, query: str) -> str:
+        url = f"https://api.klipy.com/api/v1/{os.environ['KLIPY_API_KEY']}/gifs/search"
+        r = requests.get(url, params={"q": query, "per_page": 50})
+        r.raise_for_status()
+        urls = [g["file"]["hd"]["gif"]["url"] for g in r.json()["data"]["data"]]
         return random.choice(urls)
 
     def _lp_embed(self, name: str):

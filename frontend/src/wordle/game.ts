@@ -148,7 +148,7 @@ export function endSummaryText(g: Game, stats: GuessStat[]): string {
 
 export function shareText(g: Game, summary?: string): string {
   const score = g.done === "win" ? String(g.guesses.length) : "X"
-  const header = `Wordle ${g.puzzle.id} ${score}/${MAX_GUESSES}`
+  const header = `Wordle ${g.puzzle.days_since_launch} ${score}/${MAX_GUESSES}`
   const rows = colorsFor(g).map((row) => row.map((c) => EMOJI[c]).join(""))
   return [header, ...rows, ...(summary ? [summary] : [])].join("\n")
 }

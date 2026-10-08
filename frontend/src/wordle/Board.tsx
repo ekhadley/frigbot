@@ -139,7 +139,7 @@ export function Board({
     <div className="board wordle-board">
       <div className="wordle-header">
         <div className="puzzle-meta">
-          Wordle #{game.puzzle.id} —{" "}
+          Wordle #{game.puzzle.days_since_launch} —{" "}
           <a href="https://www.nytimes.com/games/wordle/index.html" target="_blank" rel="noreferrer">
             {game.puzzle.print_date}
           </a>

@@ -46,7 +46,7 @@ The project uses `uv` for dependency management. Virtual environment is in `.ven
 - `OLD_BOT_ID` maps old userbot messages to current bot ID for transition continuity
 - All slash commands registered in `_register_commands()` as closures over `self`
 - `interaction_check` restricts all commands to `self.channel_id`
-- Sync API calls (LLM, Riot, Tenor) wrapped in `asyncio.to_thread()`
+- Sync API calls (LLM, Riot, Klipy) wrapped in `asyncio.to_thread()`
 - State persistence through `state.json` for RPS scores and model configuration
 - `load_state()` / `save_state()` instance methods for state management
 - Provides `log(level, event_type, message, data)` helper for structured JSON logging
@@ -124,7 +124,7 @@ The project uses `uv` for dependency management. Virtual environment is in `.ven
 - `DISCORD_TEST_CHANNEL_ID` - (optional) Test channel ID for `-t` mode
 - `OPENROUTER_API_KEY` - OpenRouter API key
 - `RIOT_API_KEY` - Riot API key
-- `TENOR_API_KEY` - Tenor API key
+- `KLIPY_API_KEY` - Klipy API key (gif search)
 - `ANTHROPIC_API_KEY` - Anthropic API key (for direct Claude model access)
 
 ### Message Flow
